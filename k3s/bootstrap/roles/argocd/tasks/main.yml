@@ -1,0 +1,57 @@
+---
+- name: Ensure argocd namespace
+  ansible.builtin.shell: |
+    set -o pipefail
+    k3s kubectl create namespace argocd --dry-run=client -o yaml | k3s kubectl apply -f -
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+# ArgoCD の applicationsets CRD は schema が大きく、client-side apply の
+# last-applied-configuration アノテーションが 262144 byte 上限を超えるため
+# server-side apply で投入する。
+- name: Apply ArgoCD install manifest (server-side)
+  ansible.builtin.command: >
+    k3s kubectl apply --server-side --force-conflicts -n argocd
+    -f {{ argocd_manifest_url }}
+  register: argocd_apply
+  changed_when: "'configured' in argocd_apply.stdout or 'created' in argocd_apply.stdout or 'serverside-applied' in argocd_apply.stdout"
+
+- name: Wait for argocd-server to be ready
+  ansible.builtin.command: >
+    k3s kubectl -n argocd rollout status deployment/argocd-server --timeout=600s
+  changed_when: false
+
+- name: Render root Application manifest
+  ansible.builtin.copy:
+    dest: /tmp/argocd-root-app.yaml
+    mode: "0644"
+    content: |
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: root
+        namespace: argocd
+        finalizers:
+          - resources-finalizer.argocd.argoproj.io
+      spec:
+        project: default
+        source:
+          repoURL: {{ git_repo_url }}
+          targetRevision: {{ git_target_branch }}
+          path: {{ git_apps_path }}
+          directory:
+            recurse: true
+        destination:
+          server: https://kubernetes.default.svc
+        syncPolicy:
+          automated:
+            prune: true
+            selfHeal: true
+          syncOptions:
+            - CreateNamespace=true
+
+- name: Apply root Application
+  ansible.builtin.command: k3s kubectl apply -f /tmp/argocd-root-app.yaml
+  register: root_app_apply
+  changed_when: "'configured' in root_app_apply.stdout or 'created' in root_app_apply.stdout"

@@ -1,0 +1,12 @@
+---
+- name: Apply sealed-secrets controller manifest
+  ansible.builtin.command: >
+    k3s kubectl apply
+    -f https://github.com/bitnami-labs/sealed-secrets/releases/download/{{ sealed_secrets_version }}/controller.yaml
+  register: sealed_secrets_apply
+  changed_when: "'configured' in sealed_secrets_apply.stdout or 'created' in sealed_secrets_apply.stdout"
+
+- name: Wait for sealed-secrets controller to be ready
+  ansible.builtin.command: >
+    k3s kubectl -n kube-system rollout status deployment/sealed-secrets-controller --timeout=300s
+  changed_when: false

@@ -1,0 +1,11 @@
+---
+# Source of truth for ArgoCD root Application
+git_repo_url: "https://github.com/Riri-Inferno/home-raspi-iac.git"
+git_target_branch: "develop"
+git_apps_path: "k3s/apps"
+
+# Pinned versions (bump as needed)
+sealed_secrets_version: "v0.27.3"
+
+# argocd は stable manifest を使う
+argocd_manifest_url: "https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml"

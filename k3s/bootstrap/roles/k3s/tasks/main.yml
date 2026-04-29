@@ -1,0 +1,57 @@
+---
+# Raspberry Pi OS では memory cgroup がデフォルト無効なので、k3s 起動前に有効化する。
+# /boot/firmware/cmdline.txt は単一行のスペース区切りパラメータ。
+- name: Read /boot/firmware/cmdline.txt
+  ansible.builtin.slurp:
+    src: /boot/firmware/cmdline.txt
+  register: cmdline_slurp
+
+- name: Append cgroup memory params to kernel cmdline if missing
+  ansible.builtin.copy:
+    dest: /boot/firmware/cmdline.txt
+    content: "{{ (cmdline_slurp.content | b64decode | trim) ~ ' cgroup_memory=1 cgroup_enable=memory' }}\n"
+    mode: "0755"
+  when: "'cgroup_memory=1' not in (cmdline_slurp.content | b64decode)"
+  register: cmdline_changed
+
+- name: Reboot to apply kernel cmdline changes
+  ansible.builtin.reboot:
+    msg: "Rebooting to enable memory cgroup for k3s"
+    reboot_timeout: 600
+  when: cmdline_changed.changed
+
+- name: Check if k3s is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Install k3s server
+  ansible.builtin.shell: |
+    set -o pipefail
+    curl -sfL https://get.k3s.io | sh -
+  args:
+    executable: /bin/bash
+    creates: /usr/local/bin/k3s
+  when: not k3s_binary.stat.exists
+
+- name: Ensure k3s service is enabled and running
+  ansible.builtin.systemd:
+    name: k3s
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Wait for k3s API to be reachable
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: 6443
+    delay: 5
+    timeout: 300
+
+- name: Wait for default ServiceAccount in default namespace
+  ansible.builtin.command: k3s kubectl get sa default -n default
+  register: sa_check
+  retries: 60
+  delay: 5
+  until: sa_check.rc == 0
+  changed_when: false
