@@ -23,23 +23,33 @@
 
 ## ブートストラップ
 
+### 前提
+
+- 操作端末（コントローラ）に **Ansible** がインストールされている
+- ラズパイへ SSH 公開鍵認証で接続できる（ユーザー: `riri-inferno`）
+- ラズパイ側で `sudo` がパスワードなしで使える（または `--ask-become-pass` を付けて実行）
+
+### 実行
+
 ```bash
 cd k3s/bootstrap
 ansible-playbook -i inventory.ini site.yml
+# sudo パスワードが必要な場合:
+# ansible-playbook -i inventory.ini site.yml --ask-become-pass
 ```
 
 これで以下が冪等にインストールされる:
 
 - k3s（サーバノード）
-- ArgoCD
 - sealed-secrets コントローラ
-- 本リポジトリを監視する ArgoCD `Application` リソース
+- ArgoCD
+- 本リポジトリを監視する ArgoCD `Application`（`root`）
 
 以降、`k3s/apps/` 配下のマニフェストを push すれば ArgoCD が自動で同期する。
 
 ## アクセス
 
-- ArgoCD UI: `http://raspi5/<argocd-ingress>`（初期 admin パスワード: `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d`）
+- ArgoCD UI: `http://raspi5.local/<argocd-ingress>`（初期 admin パスワード: `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d`）
 - kubectl: `/etc/rancher/k3s/k3s.yaml` を `~/.kube/config` に取り込む
 
 ## シークレット管理
@@ -55,7 +65,7 @@ kubectl create secret generic <name> --from-literal=key=value --dry-run=client -
 
 復号鍵はクラスタ内のみで保持され、リポジトリには出ない。
 
-## ディレクトリ構成（予定）
+## ディレクトリ構成
 
 ```
 k3s/
@@ -63,10 +73,12 @@ k3s/
 ├── bootstrap/                # Ansible: k3s + クラスタ基盤の初期構築
 │   ├── inventory.ini
 │   ├── site.yml
+│   ├── group_vars/
+│   │   └── all.yml           # repo URL / ブランチ / 各種バージョン
 │   └── roles/
 │       ├── k3s/
-│       ├── argocd/
-│       └── sealed-secrets/
+│       ├── sealed-secrets/
+│       └── argocd/           # 本体 install + 自リポジトリ監視 root Application
 └── apps/                     # ArgoCD が同期するマニフェスト
     └── <app-name>/
         ├── deployment.yaml
@@ -76,8 +88,6 @@ k3s/
 
 ## 今後の追加予定
 
-- [ ] Ansible playbook 実装（k3s / ArgoCD / sealed-secrets インストール）
-- [ ] ArgoCD Application マニフェスト（自リポジトリ監視）
 - [ ] Ingress Controller 選定（k3s 同梱 Traefik or nginx）
 - [ ] `monitoring/` を docker-compose から k3s マニフェストへ移行
 - [ ] コンテナレジストリ確定（GHCR or セルフホスト）
