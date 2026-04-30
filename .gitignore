@@ -2,6 +2,9 @@
 WORK_LOG.md
 STATUS.md
 
+# AI agent
+CLAUDE.md
+
 # シークレット平文・private key
 *master-key*.yaml
 *master-key*.yml
