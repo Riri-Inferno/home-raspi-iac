@@ -1,0 +1,9 @@
+# 作業用ログ・サマリ
+WORK_LOG.md
+STATUS.md
+
+# シークレット平文・private key
+*master-key*.yaml
+*master-key*.yml
+*private-key*.yaml
+*.kubeconfig
