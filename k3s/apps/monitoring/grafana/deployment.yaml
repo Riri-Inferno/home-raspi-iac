@@ -15,8 +15,17 @@ spec:
       labels:
         app: grafana
     spec:
+      securityContext:
+        fsGroup: 472
       containers:
         - name: grafana
           image: grafana/grafana:latest
           ports:
-          - containerPort: 3000
+            - containerPort: 3000
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/grafana
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: grafana
