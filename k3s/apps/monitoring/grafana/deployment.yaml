@@ -17,6 +17,26 @@ spec:
     spec:
       securityContext:
         fsGroup: 472
+      initContainers:
+        - name: reset-admin-password
+          image: grafana/grafana:latest
+          command:
+            - sh
+            - -c
+            - |
+              if [ -f /var/lib/grafana/grafana.db ]; then
+                grafana-cli --homepath /usr/share/grafana \
+                  admin reset-admin-password "$ADMIN_PASSWORD"
+              fi
+          env:
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin
+                  key: admin-password
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/grafana
       containers:
         - name: grafana
           image: grafana/grafana:latest
