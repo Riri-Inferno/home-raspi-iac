@@ -1,3 +1,5 @@
+---
+# PVCは一旦なしで
 apiVersion: apps/v1
 kind: Deployment # リソースの種類
 metadata:
