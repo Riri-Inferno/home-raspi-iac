@@ -1,0 +1,22 @@
+---
+# PVCは一旦なしで
+apiVersion: apps/v1
+kind: Deployment # リソースの種類
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  replicas: 1 # レプリカの数
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:latest
+          ports:
+          - containerPort: 3000
