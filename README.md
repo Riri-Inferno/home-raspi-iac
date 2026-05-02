@@ -8,22 +8,21 @@
 ```mermaid
 flowchart TD
     subgraph GH["GitHub: Riri-Inferno/home-raspi-iac (source of truth)"]
-        M["monitoring/<br/>docker-compose 暫定"]
         subgraph K3S_REPO["k3s/"]
             B["bootstrap/<br/>Ansible: k3s + ArgoCD + sealed-secrets"]
-            A["apps/<br/>ArgoCD が同期するマニフェスト群"]
+            A["apps/<br/>ArgoCD が同期するマニフェスト群<br/>(monitoring 等)"]
         end
     end
 
     subgraph PI["Raspberry Pi 5 (raspi5.local)"]
-        subgraph DOCKER["Docker（既存 / 暫定）"]
+        subgraph DOCKER["Docker（k3s 外で残すサービス）"]
             KK[kakeibo]
             CF[cloudflared]
-            MON[monitoring]
         end
         subgraph K3S_CL["k3s クラスタ"]
             ARGO["argocd<br/>root Application が GitHub を監視"]
             SS[sealed-secrets-controller]
+            MON["monitoring<br/>(Prometheus / Grafana / node-exporter / cAdvisor)"]
             APPS["apps/...<br/>ArgoCD が同期する各種ワークロード"]
         end
     end
@@ -40,14 +39,13 @@ flowchart TD
 | オーケストレーション | **k3s** | 軽量 Kubernetes |
 | GitOps | **ArgoCD** | リポジトリ → クラスタの同期、UI 付き |
 | シークレット管理 | **sealed-secrets**（Bitnami） | Git に乗せられる暗号化 Secret |
-| 監視（暫定） | Prometheus + Grafana + node-exporter + cAdvisor | docker-compose で運用中、k3s 化予定 |
+| 監視 | Prometheus + Grafana + node-exporter + cAdvisor | k3s 上で運用、PVC 永続化 |
 
 ## ディレクトリ
 
-- [`monitoring/`](monitoring/) — ホストマシンの監視スタック（docker-compose）。詳細は [monitoring/README.md](monitoring/README.md)
-- [`k3s/`](k3s/) — Kubernetes 関連。詳細は [k3s/README.md](k3s/README.md)
+- [`k3s/`](k3s/) — Kubernetes 関連。詳細・運用ガイドは [k3s/README.md](k3s/README.md)
   - `k3s/bootstrap/` — Ansible playbook（k3s + ArgoCD + sealed-secrets を install）
-  - `k3s/apps/` — ArgoCD が同期する Kubernetes マニフェスト
+  - `k3s/apps/` — ArgoCD が同期する Kubernetes マニフェスト（`monitoring/` 含む）
 - [`.github/`](.github/) — PR テンプレート
 
 ## クイックスタート（クラスタ構築）
@@ -62,13 +60,13 @@ ansible-playbook -i inventory.ini site.yml
 
 これで k3s クラスタ + sealed-secrets + ArgoCD + 本リポジトリを監視する root Application が立ち上がる。以降 `k3s/apps/` にマニフェストを push すれば自動同期。
 
-## アクセス（暫定）
+## アクセス（暫定 / NodePort 経由）
 
 | サービス | アクセス |
 |---|---|
 | ArgoCD UI | port-forward 経由で `https://raspi5.local:8443/`（admin / 別管理） |
-| Grafana | `http://raspi5.local:3001/`（admin / 別管理） |
-| Prometheus | `http://raspi5.local:9090/` |
+| Grafana | `http://raspi5.local:30001/`（admin / SealedSecret 管理） |
+| Prometheus | `http://raspi5.local:30002/` |
 
 正式な公開ルート（Cloudflare Tunnel 経由 or Ingress 化）は今後の TODO。
 
@@ -81,6 +79,6 @@ ansible-playbook -i inventory.ini site.yml
 ## 今後の追加予定
 
 - [ ] ArgoCD の外部公開（Cloudflare Tunnel 経由 / Cloudflare Access で認証ゲート）
-- [ ] `monitoring/` を docker-compose から k3s マニフェストへ移行
 - [ ] コンテナレジストリ確定（GHCR or セルフホスト）
 - [ ] SSD 化（HW 調達後の別プロジェクト）
+- [ ] dashboard JSON の IaC 化（必要になったら、UI 完結でも可）
