@@ -22,10 +22,31 @@ spec:
           image: grafana/grafana:latest
           ports:
             - containerPort: 3000
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin
+                  key: admin-user
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin
+                  key: admin-password
           volumeMounts:
-            - name: data
+            - name: data                                    
               mountPath: /var/lib/grafana
+            - name: datasources                             
+              mountPath: /etc/grafana/provisioning/datasources
+            - name: dashboards-provider                     
+              mountPath: /etc/grafana/provisioning/dashboards
       volumes:
-        - name: data
+        - name: data                                        
           persistentVolumeClaim:
             claimName: grafana
+        - name: datasources                                 
+          configMap:
+            name: grafana-datasources
+        - name: dashboards-provider                         
+          configMap:
+            name: grafana-dashboards-provider
