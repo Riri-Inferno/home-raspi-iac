@@ -25,7 +25,7 @@ spec:
             - -c
             - |
               if [ -f /var/lib/grafana/grafana.db ]; then
-                grafana-cli --homepath /usr/share/grafana \
+                grafana cli --homepath /usr/share/grafana \
                   admin reset-admin-password "$ADMIN_PASSWORD"
               fi
           env:
