@@ -14,6 +14,8 @@ spec:
       labels:
         app: prometheus
     spec:
+      securityContext:
+        fsGroup: 65534 #prom/prometheus nobody (UID/GID 65534)
       containers:
         - name: prometheus
           image: prom/prometheus:latest
@@ -27,7 +29,12 @@ spec:
             - name: prometheus-config-volume
               mountPath: /etc/prometheus/prometheus.yml
               subPath: prometheus.yml
+            - name: data
+              mountPath: /prometheus
       volumes:
         - name: prometheus-config-volume
           configMap:
             name: prometheus-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: prometheus
