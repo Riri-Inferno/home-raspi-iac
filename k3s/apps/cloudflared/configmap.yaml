@@ -1,0 +1,16 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudflared-config
+  namespace: cloudflared
+data:
+  config.yml: |
+    tunnel: 4c26acb4-6ab9-4fcc-961b-53968db80666
+    credentials-file: /etc/cloudflared/credentials.json
+    ingress:
+      - hostname: argocd.riri-inferno.com
+        service: https://argocd-server.argocd.svc.cluster.local:443
+        originRequest:
+          noTLSVerify: true
+      - service: http_status:404
