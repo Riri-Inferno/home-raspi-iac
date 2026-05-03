@@ -1,0 +1,38 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+  namespace: cloudflared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudflared
+  template:
+    metadata:
+      labels:
+        app: cloudflared
+    spec:
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:latest
+          args:
+            - "tunnel"
+            - "--config"
+            - "/etc/cloudflared/config.yml"
+            - "run"
+          volumeMounts:
+            - name: cloudflared-config-volume
+              mountPath: /etc/cloudflared/config.yml
+              subPath: config.yml
+            - name: cloudflared-secret-volume
+              mountPath: /etc/cloudflared/credentials.json
+              subPath: credentials.json
+      volumes:
+        - name: cloudflared-config-volume
+          configMap:
+            name: cloudflared-config
+        - name: cloudflared-secret-volume
+          secret:
+            secretName: cloudflared-credentials
