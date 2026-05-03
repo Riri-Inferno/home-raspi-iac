@@ -5,29 +5,39 @@
 
 ## 構成
 
+ArgoCD は **App of Apps** パターン構成。`root` Application が `k3s/apps/_apps/` 配下の **子 Application 群のみ** を管理し、各子 Application が自分の担当ディレクトリを同期する。
+
 ```mermaid
 flowchart TD
     subgraph GH["GitHub: Riri-Inferno/home-raspi-iac (source of truth)"]
         subgraph K3S_REPO["k3s/"]
             B["bootstrap/<br/>Ansible: k3s + ArgoCD + sealed-secrets"]
-            A["apps/<br/>ArgoCD が同期するマニフェスト群<br/>(monitoring 等)"]
+            subgraph APPS["apps/"]
+                APPSDIR["_apps/<br/>子 Application マニフェスト群"]
+                ARGOCFG["argocd/<br/>(SealedSecret 等)"]
+                CFD["cloudflared/"]
+                MON["monitoring/"]
+            end
         end
     end
 
     subgraph PI["Raspberry Pi 5 (raspi5.local)"]
         subgraph DOCKER["Docker（k3s 外で残すサービス）"]
             KK[kakeibo]
-            CF[cloudflared]
+            CFD_DOCKER[cloudflared<br/>kakeibo 用]
         end
         subgraph K3S_CL["k3s クラスタ"]
-            ARGO["argocd<br/>root Application が GitHub を監視"]
-            SS[sealed-secrets-controller]
-            MON["monitoring<br/>(Prometheus / Grafana / node-exporter / cAdvisor)"]
-            APPS["apps/...<br/>ArgoCD が同期する各種ワークロード"]
+            ROOT["root Application<br/>(_apps/ を監視)"]
+            ROOT --> APPA["Application: argocd"]
+            ROOT --> APPC["Application: cloudflared"]
+            ROOT --> APPM["Application: monitoring"]
+            APPA -.-> RESA["argocd ns の<br/>SealedSecret 等"]
+            APPC -.-> RESC["cloudflared Pod<br/>(k3s tunnel)"]
+            APPM -.-> RESM["Prometheus / Grafana<br/>node-exporter / cAdvisor"]
         end
     end
 
-    GH -.->|pull| K3S_CL
+    GH -.->|pull| ROOT
 ```
 
 ## 採用技術と役割
@@ -45,7 +55,9 @@ flowchart TD
 
 - [`k3s/`](k3s/) — Kubernetes 関連。詳細・運用ガイドは [k3s/README.md](k3s/README.md)
   - `k3s/bootstrap/` — Ansible playbook（k3s + ArgoCD + sealed-secrets を install）
-  - `k3s/apps/` — ArgoCD が同期する Kubernetes マニフェスト（`monitoring/` 含む）
+  - `k3s/apps/` — ArgoCD が同期する Kubernetes マニフェスト
+    - `k3s/apps/_apps/` — **子 Application** マニフェスト群（root が同期する対象）
+    - `k3s/apps/<app-name>/` — 各アプリ実体（Deployment / Service / SealedSecret など）
 - [`.github/`](.github/) — PR テンプレート
 
 ## クイックスタート（クラスタ構築）

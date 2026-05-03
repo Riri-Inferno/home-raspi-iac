@@ -68,10 +68,28 @@ k3s/
 │       ├── k3s/
 │       ├── sealed-secrets/
 │       └── argocd/           # 本体 install + 自リポジトリ監視 root Application
-└── apps/                     # ArgoCD が同期するマニフェスト
+└── apps/
+    ├── _apps/                # 子 Application マニフェスト群（root が同期する対象）
+    │   ├── argocd.yaml       # Application: argocd → k3s/apps/argocd/
+    │   ├── cloudflared.yaml  # Application: cloudflared → k3s/apps/cloudflared/
+    │   └── monitoring.yaml   # Application: monitoring → k3s/apps/monitoring/
     ├── argocd/               # ArgoCD 自身の SealedSecret（admin password）
+    ├── cloudflared/          # ArgoCD 外部公開用 cloudflared
     └── monitoring/           # Prometheus / Grafana / node-exporter / cAdvisor
 ```
+
+## ArgoCD 構造（App of Apps）
+
+| Application | 範囲 | 担当 path |
+|---|---|---|
+| `root` | `_apps/` のみ監視。子 Application を作る／消す | `k3s/apps/_apps/` |
+| `argocd` | argocd namespace 内の SealedSecret 等 | `k3s/apps/argocd/` |
+| `cloudflared` | k3s tunnel 用 cloudflared 一式 | `k3s/apps/cloudflared/` |
+| `monitoring` | Prometheus / Grafana / exporter 群 | `k3s/apps/monitoring/` |
+
+- root は `prune: false`（誤削除防止、子 Application 単位の手動確認を要請）
+- 各子 Application は `prune: true`（実 resource を厳密に管理）
+- 新アプリ追加 = `_apps/<name>.yaml` と `<name>/` 配下のマニフェストを 2 セットで足す
 
 ---
 
@@ -79,31 +97,62 @@ k3s/
 
 ### 新しいアプリを追加する
 
+App of Apps パターンなので **2 セット** 作る：実体マニフェスト群 + それを管理する子 Application。
+
 1. **feature ブランチ作成**:
    ```bash
    git checkout -b feature/<app-name>
    ```
 
-2. **マニフェストを `k3s/apps/<app-name>/` に配置**:
+2. **実体マニフェストを `k3s/apps/<app-name>/` に配置**:
    - 必要に応じて `namespace.yaml` / `deployment.yaml` / `service.yaml` / `pvc.yaml` 等
    - シークレットが必要なら次セクション「Secret を SealedSecret 化する」を参照
 
-3. **構文チェック（任意だが推奨）**:
+3. **子 Application マニフェストを `k3s/apps/_apps/<app-name>.yaml` に配置**:
+   既存の `_apps/monitoring.yaml` 等をコピーし、`name`、`spec.source.path`、`spec.destination.namespace` を新アプリ用に書き換える。テンプレ:
+   ```yaml
+   apiVersion: argoproj.io/v1alpha1
+   kind: Application
+   metadata:
+     name: <app-name>
+     namespace: argocd
+     finalizers:
+       - resources-finalizer.argocd.argoproj.io
+   spec:
+     project: default
+     source:
+       repoURL: https://github.com/Riri-Inferno/home-raspi-iac.git
+       targetRevision: develop
+       path: k3s/apps/<app-name>
+       directory:
+         recurse: true
+     destination:
+       server: https://kubernetes.default.svc
+       namespace: <app-namespace>
+     syncPolicy:
+       automated:
+         prune: true
+         selfHeal: true
+       syncOptions:
+         - CreateNamespace=true
+   ```
+
+4. **構文チェック（任意だが推奨）**:
    ```bash
    ssh riri-inferno@raspi5.local 'sudo k3s kubectl apply --dry-run=server -f -' \
-     < k3s/apps/<app-name>/deployment.yaml
+     < k3s/apps/_apps/<app-name>.yaml
+   # 実体側もそれぞれ流す
    ```
-   `created (server dry run)` が出れば API 検証 OK。
 
-4. **PR 作成 → develop マージ**:
+5. **PR 作成 → develop マージ**:
    ```bash
-   git add k3s/apps/<app-name>
+   git add k3s/apps/<app-name> k3s/apps/_apps/<app-name>.yaml
    git commit -m "..."
    git push -u origin feature/<app-name>
    gh pr create --base develop ...
    ```
 
-5. **ArgoCD 同期確認**:
+6. **ArgoCD 同期確認**:
    - 自動 sync は **3 分間隔** のポーリング。急ぎなら手動 refresh:
      ```bash
      ssh riri-inferno@raspi5.local \
@@ -111,9 +160,10 @@ k3s/
      ```
    - 状態確認:
      ```bash
-     ssh riri-inferno@raspi5.local 'sudo k3s kubectl -n argocd get application root'
+     ssh riri-inferno@raspi5.local 'sudo k3s kubectl -n argocd get applications'
      ssh riri-inferno@raspi5.local 'sudo k3s kubectl get all -n <namespace>'
      ```
+   - root が `_apps/<name>.yaml` を見つけて子 Application を作り、その子が実体を sync する流れ
 
 ### Secret を SealedSecret 化する
 
