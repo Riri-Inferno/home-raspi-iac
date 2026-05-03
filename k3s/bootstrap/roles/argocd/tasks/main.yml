@@ -22,6 +22,8 @@
     k3s kubectl -n argocd rollout status deployment/argocd-server --timeout=600s
   changed_when: false
 
+# App of Apps パターン: root は k3s/apps/_apps/ 配下の子 Application 群のみ管理。
+# 実 resource の prune は子側 Application が担うため、root の prune は無効化（誤削除防止）。
 - name: Render root Application manifest
   ansible.builtin.copy:
     dest: /tmp/argocd-root-app.yaml
@@ -46,7 +48,7 @@
           server: https://kubernetes.default.svc
         syncPolicy:
           automated:
-            prune: true
+            prune: false
             selfHeal: true
           syncOptions:
             - CreateNamespace=true

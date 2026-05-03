@@ -2,7 +2,7 @@
 # Source of truth for ArgoCD root Application
 git_repo_url: "https://github.com/Riri-Inferno/home-raspi-iac.git"
 git_target_branch: "develop"
-git_apps_path: "k3s/apps"
+git_apps_path: "k3s/apps/_apps"
 
 # Pinned versions (bump as needed)
 sealed_secrets_version: "v0.27.3"
