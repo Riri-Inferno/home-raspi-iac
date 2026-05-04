@@ -9,3 +9,6 @@ sealed_secrets_version: "v0.27.3"
 
 # argocd は stable manifest を使う
 argocd_manifest_url: "https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml"
+
+# k3s OIDC issuer（GCP WIF 連携用）。Cloudflared 経由で /.well-known/openid-configuration を公開する。
+oidc_issuer_url: "https://oidc.riri-inferno.com/"

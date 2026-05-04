@@ -1,0 +1,21 @@
+---
+# k3s が発行する SA token の検証に必要な OIDC discovery / JWKS を静的に配信する。
+# issuer / jwks_uri は外部公開 URL に書き換え済。
+# JWKS の内容は k3s の SA signing key を反映（service-account-issuer 変更後も鍵自体は不変）。
+# 万一 kid が変わったら、/openid/v1/jwks を再取得して更新すること。
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oidc-content
+  namespace: oidc
+data:
+  openid-configuration: |
+    {
+      "issuer": "https://oidc.riri-inferno.com/",
+      "jwks_uri": "https://oidc.riri-inferno.com/openid/v1/jwks",
+      "response_types_supported": ["id_token"],
+      "subject_types_supported": ["public"],
+      "id_token_signing_alg_values_supported": ["RS256"]
+    }
+  jwks: |
+    {"keys":[{"use":"sig","kty":"RSA","kid":"nh3NBsVXs4openk8tm4wQWgq0bOSf4j3OmPVvyWtKp0","alg":"RS256","n":"xmWtHSAYQeBjZlrm0rjbxDDlk2HZ3NRk9xXTkc8hEM7tATgx0cfMEqi-1VU7lC6U3bexdjfS2spuJzs5WLGBaBtkmqI3VPVj5h6VwCF5fJInytz_ELVOYexI3KmRxTtmH0ucL-4K-9RzQkI-EqGQ1l0uEoVimxQ3zqf4eLPb1tTr0ggUS1VVSJNfpaZPsylyrDP5xAPYcVphbok8lxMOWnvgFEnRGSwauA0Eigz3I_9EwXcarh7n8i529n-bCe0rjpugMNqaLbXtmrKQzhWqZGu8F56fe50dMhHCkUmn6nKJgOV4wJE1W7oVxvOGtgAt6FUquiRQss7nx6aZA4c1ZQ","e":"AQAB"}]}
