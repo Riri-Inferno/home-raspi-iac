@@ -1,0 +1,29 @@
+---
+# Workload Identity Federation の external_account 設定。
+# この JSON 自体は識別子の集合で機密ではない（ConfigMap で配布可）。
+# Pod に projected SA token を併せてマウントすることで初めて GCP STS が token exchange する。
+#
+# 値の出所:
+#   audience                          → GCP WIF Provider 作成時の resource path
+#   service_account_impersonation_url → backend が impersonate する GCP SA
+#   credential_source.file            → Pod 内の SA token マウント先
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kakeibo-wif-config
+  namespace: kakeibo
+data:
+  wif.json: |
+    {
+      "type": "external_account",
+      "audience": "//iam.googleapis.com/projects/831303094058/locations/global/workloadIdentityPools/kakeibo-pool/providers/kakeibo-k3s",
+      "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+      "token_url": "https://sts.googleapis.com/v1/token",
+      "service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/portfolio-472717@appspot.gserviceaccount.com:generateAccessToken",
+      "credential_source": {
+        "file": "/var/run/secrets/tokens/gcp-token",
+        "format": {
+          "type": "text"
+        }
+      }
+    }
