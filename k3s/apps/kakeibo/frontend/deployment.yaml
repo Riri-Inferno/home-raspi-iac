@@ -10,7 +10,7 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      apps: kakeibo-frontend
+      app: kakeibo-frontend
   template:
     metadata:
       labels:

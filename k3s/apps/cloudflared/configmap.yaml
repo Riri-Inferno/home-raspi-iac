@@ -10,7 +10,7 @@ data:
     credentials-file: /etc/cloudflared/credentials.json
     ingress:
       - hostname: kakeibo.riri-inferno.com
-      service: http://kakeibo-frontend.kakeibo.svc.cluster.local:80
+        service: http://kakeibo-frontend.kakeibo.svc.cluster.local:80
       - hostname: api-kakeibo.riri-inferno.com
         service: http://kakeibo-backend.kakeibo.svc.cluster.local:8080
       # GCP WIF が SA token 検証のために fetch する OIDC discovery / JWKS。
