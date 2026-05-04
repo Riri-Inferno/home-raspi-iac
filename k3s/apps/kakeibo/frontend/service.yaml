@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kakeibo-frontend
+  namespace: kakeibo
+spec:
+  type: ClusterIP
+  selector:
+    app: kakeibo-frontend
+  ports:
+    - port: 80
+      targetPort: 80
