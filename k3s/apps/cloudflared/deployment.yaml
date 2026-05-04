@@ -4,6 +4,10 @@ kind: Deployment
 metadata:
   name: cloudflared
   namespace: cloudflared
+  annotations:
+    # Reloader が cloudflared-config ConfigMap / cloudflared-credentials Secret の
+    # 変更を検知したら自動で rollout restart する。ingress rule 追加時に手動 restart 不要。
+    reloader.stakater.com/auto: "true"
 spec:
   replicas: 1
   selector:

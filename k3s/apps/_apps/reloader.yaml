@@ -1,0 +1,30 @@
+---
+# stakater/Reloader: ConfigMap / Secret 変更時に対応 Deployment を自動 rollout する controller。
+# Helm chart 経由で ArgoCD に管理させる。
+# 適用対象は Deployment 側に annotation を付けて宣言する:
+#   reloader.stakater.com/auto: "true"     # 自分が mount している全 ConfigMap/Secret 監視
+#   configmap.reloader.stakater.com/reload: "<name>"   # 特定 ConfigMap のみ
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: reloader
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://stakater.github.io/stakater-charts
+    chart: reloader
+    targetRevision: 2.2.11
+    helm:
+      releaseName: reloader
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: reloader
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
