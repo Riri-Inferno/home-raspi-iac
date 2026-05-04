@@ -1,0 +1,68 @@
+---
+# kakeibo backend (.NET 8)。GHCR から pull、WIF で GCP に認証、kakeibo-db に接続。
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kakeibo-backend
+  namespace: kakeibo
+  annotations:
+    # Reloader: kakeibo-config / kakeibo-secret / kakeibo-wif-config の変更で
+    # 自動 rollout restart する。
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kakeibo-backend
+  template:
+    metadata:
+      labels:
+        app: kakeibo-backend
+    spec:
+      # WIF: kakeibo-backend SA の token を projected で取り、WIF JSON と組み合わせて GCP に認証する。
+      serviceAccountName: kakeibo-backend
+      containers:
+        - name: backend
+          # 動作確認は dev-<sha> で済んでいるが、運用では Release 公開後 :latest を期待。
+          # :latest が無い場合は :dev に切替（ci-cd.md 参照）。
+          image: ghcr.io/riri-inferno/serverlesskakeibo/backend:latest
+          ports:
+            - containerPort: 8080
+              name: http
+          envFrom:
+            - configMapRef:
+                name: kakeibo-config
+            - secretRef:
+                name: kakeibo-secret
+          volumeMounts:
+            - name: gcp-token
+              mountPath: /var/run/secrets/tokens
+              readOnly: true
+            - name: wif-config
+              mountPath: /etc/gcp
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+      volumes:
+        - name: gcp-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  audience: //iam.googleapis.com/projects/831303094058/locations/global/workloadIdentityPools/kakeibo-pool/providers/kakeibo-k3s
+                  expirationSeconds: 3600
+                  path: gcp-token
+        - name: wif-config
+          configMap:
+            name: kakeibo-wif-config
