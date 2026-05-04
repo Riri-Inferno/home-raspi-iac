@@ -1,0 +1,18 @@
+---
+# kakeibo frontend image の nginx config が proxy_pass http://backend:8080; を
+# ハードコードしている（compose 時代の docker network ホスト名）ため、
+# k3s 上で backend という名前で kakeibo-backend Pod に到達できる alias Service を提供する。
+#
+# 長期的には kakeibo repo 側で nginx config をテンプレ化（${BACKEND_UPSTREAM} 等の env 注入）
+# する方が筋が良いが、現状の image を変えずに動かすための workaround。
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: kakeibo
+spec:
+  selector:
+    app: kakeibo-backend          # 既存の kakeibo-backend Service と同じ Pod を指す
+  ports:
+    - port: 8080
+      targetPort: 8080
