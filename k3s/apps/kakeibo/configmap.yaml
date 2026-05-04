@@ -1,0 +1,49 @@
+---
+# kakeibo backend / postgres が共有する非機密 env 一式（k3s-env-vars.md 準拠）。
+# postgres Pod は POSTGRES_USER / POSTGRES_DB のみ使う。backend Pod は envFrom で全部読み込む。
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kakeibo-config
+  namespace: kakeibo
+data:
+  # postgres
+  POSTGRES_USER: "postgres"
+  POSTGRES_DB: "appdb"
+
+  # ASP.NET Core
+  ASPNETCORE_ENVIRONMENT: "Production"
+  ASPNETCORE_URLS: "http://+:8080"
+
+  # GCP / WIF
+  GOOGLE_APPLICATION_CREDENTIALS: "/etc/gcp/wif.json"
+  GcpAuth__DefaultScopes__0: "https://www.googleapis.com/auth/cloud-platform"
+  GcpAuth__UseCache: "True"
+  GcpAuth__CacheDurationMinutes: "60"
+
+  # Vertex AI
+  VertexAi__ProjectId: "portfolio-472717"
+
+  # GCS
+  GcpStorage__ProjectId: "portfolio-472717"
+  GcpStorage__BucketName: "serverless-kakeibo"
+  GcpStorage__IsPublicBucket: "false"
+  GcpStorage__GenerateSignedUrl: "true"
+  GcpStorage__SignedUrlExpirationHours: "1"
+  GcpStorage__SignerServiceAccount: "portfolio-472717@appspot.gserviceaccount.com"
+
+  # JWT
+  Authentication__Jwt__Issuer: "ServerlessKakeiboApi"
+  Authentication__Jwt__Audience: "ServerlessKakeiboApp"
+  Authentication__Jwt__ExpirationMinutes: "15"
+  Authentication__Jwt__RefreshTokenExpirationDays: "7"
+
+  # OAuth
+  Authentication__Google__ClientId: "831303094058-ci39f3eetr69tk83csdtsm8n0dsqrier.apps.googleusercontent.com"
+  Authentication__GitHub__ClientId: "Ov23lioB2xLZw6Vmfib2"
+
+  # CORS
+  AllowedOrigins__0: "https://kakeibo.riri-inferno.com"
+
+  # Tenancy
+  DefaultTenantId: "deadeade-0001-0000-0000-000000000001"

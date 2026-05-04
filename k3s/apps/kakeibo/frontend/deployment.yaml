@@ -1,0 +1,25 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kakeibo-frontend
+  namespace: kakeibo
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kakeibo-frontend
+  template:
+    metadata:
+      labels:
+        app: kakeibo-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/riri-inferno/serverlesskakeibo/frontend:latest
+          ports:
+            - containerPort: 80
+              name: http
+# 環境変数はビルド時に焼き込まれているのでないです

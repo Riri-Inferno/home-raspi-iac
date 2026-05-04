@@ -1,0 +1,62 @@
+---
+# kakeibo の DB（postgres:16）。compose 版と同じ image を使い、データ移行（D3）で pg_dump → restore する想定。
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kakeibo-db
+  namespace: kakeibo
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate              # PVC は ReadWriteOnce、rolling update では二重マウントになるため Recreate
+  selector:
+    matchLabels:
+      app: kakeibo-db
+  template:
+    metadata:
+      labels:
+        app: kakeibo-db
+    spec:
+      securityContext:
+        fsGroup: 999             # postgres コンテナの GID。マウント時に PV を chown して書き込み可能にする
+      containers:
+        - name: postgres
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: kakeibo-config
+                  key: POSTGRES_USER
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: kakeibo-config
+                  key: POSTGRES_DB
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: kakeibo-secret
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: kakeibo-db

@@ -1,0 +1,14 @@
+---
+# cloudflared から DNS で参照される。NodePort は不要（外部公開は Cloudflare Tunnel 経由）。
+apiVersion: v1
+kind: Service
+metadata:
+  name: kakeibo-backend
+  namespace: kakeibo
+spec:
+  type: ClusterIP
+  selector:
+    app: kakeibo-backend
+  ports:
+    - port: 8080
+      targetPort: 8080

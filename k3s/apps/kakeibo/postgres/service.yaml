@@ -1,0 +1,15 @@
+---
+# クラスタ内 backend からのみ参照されるので ClusterIP で十分。
+# Service 名 'kakeibo-db' を connection string の Host で使う。
+apiVersion: v1
+kind: Service
+metadata:
+  name: kakeibo-db
+  namespace: kakeibo
+spec:
+  type: ClusterIP
+  selector:
+    app: kakeibo-db
+  ports:
+    - port: 5432
+      targetPort: 5432
