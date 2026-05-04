@@ -9,6 +9,10 @@ data:
     tunnel: 4c26acb4-6ab9-4fcc-961b-53968db80666
     credentials-file: /etc/cloudflared/credentials.json
     ingress:
+      - hostname: kakeibo.riri-inferno.com
+      service: http://kakeibo-frontend.kakeibo.svc.cluster.local:80
+      - hostname: api-kakeibo.riri-inferno.com
+        service: http://kakeibo-backend.kakeibo.svc.cluster.local:8080
       # GCP WIF が SA token 検証のために fetch する OIDC discovery / JWKS。
       # Cloudflare Access では保護しないこと（GCP からの匿名 GET を通す必要がある）。
       - hostname: oidc.riri-inferno.com
