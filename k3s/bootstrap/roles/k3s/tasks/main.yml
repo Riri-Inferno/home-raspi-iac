@@ -20,6 +20,24 @@
     reboot_timeout: 600
   when: cmdline_changed.changed
 
+# WIF 用に kube-apiserver の service-account-issuer を公開 URL に設定する。
+# 既存クラスタでは config 変更を検知して k3s を再起動する。
+- name: Ensure /etc/rancher/k3s directory exists
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: "0755"
+
+- name: Write k3s config.yaml (kube-apiserver-arg for OIDC issuer)
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/config.yaml
+    mode: "0644"
+    content: |
+      kube-apiserver-arg:
+        - "service-account-issuer={{ oidc_issuer_url }}"
+        - "service-account-jwks-uri={{ oidc_issuer_url }}openid/v1/jwks"
+  register: k3s_config_file
+
 - name: Check if k3s is already installed
   ansible.builtin.stat:
     path: /usr/local/bin/k3s
@@ -33,6 +51,17 @@
     executable: /bin/bash
     creates: /usr/local/bin/k3s
   when: not k3s_binary.stat.exists
+
+# 既存クラスタで config が変わった場合のみ再起動。初回 install 時は systemd ユニット作成と同時に
+# config が読まれているのでスキップ。
+- name: Restart k3s if config changed (existing cluster only)
+  ansible.builtin.systemd:
+    name: k3s
+    state: restarted
+    daemon_reload: true
+  when:
+    - k3s_binary.stat.exists
+    - k3s_config_file.changed
 
 - name: Ensure k3s service is enabled and running
   ansible.builtin.systemd:

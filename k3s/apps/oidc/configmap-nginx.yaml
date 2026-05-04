@@ -1,0 +1,27 @@
+---
+# nginx の server block。/.well-known/openid-configuration と /openid/v1/jwks の 2 パスだけを
+# application/json で返す。それ以外は 404。
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oidc-nginx-config
+  namespace: oidc
+data:
+  default.conf: |
+    server {
+      listen 80;
+
+      location = /.well-known/openid-configuration {
+        default_type application/json;
+        alias /usr/share/oidc/openid-configuration;
+      }
+
+      location = /openid/v1/jwks {
+        default_type application/json;
+        alias /usr/share/oidc/jwks;
+      }
+
+      location / {
+        return 404;
+      }
+    }
