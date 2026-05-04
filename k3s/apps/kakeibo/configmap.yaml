@@ -1,7 +1,6 @@
 ---
 # kakeibo backend / postgres が共有する非機密 env 一式（k3s-env-vars.md 準拠）。
 # postgres Pod は POSTGRES_USER / POSTGRES_DB のみ使う。backend Pod は envFrom で全部読み込む。
-# `__FILL__` で始まる値は **コミット前にユーザーが置換**すること（kakeibo の .env.prod 等を参照）。
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -27,7 +26,7 @@ data:
 
   # GCS
   GcpStorage__ProjectId: "portfolio-472717"
-  GcpStorage__BucketName: "__FILL__BUCKET_NAME__"
+  GcpStorage__BucketName: "serverless-kakeibo"
   GcpStorage__IsPublicBucket: "false"
   GcpStorage__GenerateSignedUrl: "true"
   GcpStorage__SignedUrlExpirationHours: "1"
@@ -40,8 +39,8 @@ data:
   Authentication__Jwt__RefreshTokenExpirationDays: "7"
 
   # OAuth
-  Authentication__Google__ClientId: "__FILL__GOOGLE_CLIENT_ID__"
-  Authentication__GitHub__ClientId: "__FILL__GITHUB_CLIENT_ID__"
+  Authentication__Google__ClientId: "831303094058-ci39f3eetr69tk83csdtsm8n0dsqrier.apps.googleusercontent.com"
+  Authentication__GitHub__ClientId: "Ov23lioB2xLZw6Vmfib2"
 
   # CORS
   AllowedOrigins__0: "https://kakeibo.riri-inferno.com"
