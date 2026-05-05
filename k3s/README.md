@@ -252,6 +252,75 @@ ssh riri-inferno@raspi5.local 'sudo k3s kubectl apply -f -' < <backup>.yaml
 ssh riri-inferno@raspi5.local 'sudo k3s kubectl -n kube-system rollout restart deployment sealed-secrets-controller'
 ```
 
+### 環境変数を変える
+
+**ConfigMap（非機密）の場合**:
+
+1. `k3s/apps/<app>/configmap.yaml` を編集
+2. commit & PR & merge → ArgoCD 同期
+3. **Reloader が自動で Pod を rollout restart**（deployment に `reloader.stakater.com/auto: "true"` が付いている前提）
+
+急ぎ反映したいときは ArgoCD refresh annotation:
+```bash
+ssh riri-inferno@raspi5.local 'sudo k3s kubectl -n argocd annotate application <app> argocd.argoproj.io/refresh=hard --overwrite'
+```
+
+**SealedSecret（機密）の場合**:
+
+平文値を編集する必要があるので **kubeseal を再実行** が必要。
+
+```bash
+# 1. 平文 Secret を /tmp に作成（既存値 + 変更したい値、全キー必要）
+cat > /tmp/<name>-secret.yaml <<'EOF'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: <name>
+  namespace: <ns>
+type: Opaque
+stringData:
+  KEY1: '...'
+  KEY2: '<新しい値>'
+EOF
+
+# 2. kubeseal で再暗号化（既存ファイル上書き）
+kubeseal --cert ~/.config/sealed-secrets/cert.pem -o yaml \
+  < /tmp/<name>-secret.yaml \
+  > k3s/apps/<app>/sealedsecret.yaml
+
+# 3. 平文消す
+rm -f /tmp/<name>-secret.yaml
+
+# 4. 以降は ConfigMap と同じ：commit → PR → merge → ArgoCD 同期 → Reloader
+```
+
+> **注意**: SealedSecret は復号できないので、変更時は **全キーの平文値を再入力**する。値の控えはパスワードマネージャに保管する運用が定石。
+
+### ログを見る
+
+| 用途 | 手段 | 例 |
+|---|---|---|
+| 「アプリ生きてる？」のサクッと確認 | **ArgoCD UI** | Application → Pod アイコン → Logs タブ |
+| エラー追跡（grep / `--previous`） | **`kubectl logs`** | `sudo k3s kubectl -n <ns> logs deploy/<name> --tail=100 --previous` |
+| リアルタイム追従 | **`kubectl logs -f`** | `sudo k3s kubectl -n <ns> logs deploy/<name> -f` |
+| ArgoCD 自身の挙動 | **`kubectl logs`**（UI には出にくい） | `sudo k3s kubectl -n argocd logs deploy/argocd-server` |
+| Reloader 動作確認 | 同上 | `sudo k3s kubectl -n reloader logs deploy/reloader-reloader` |
+| 数日前のログ遡り | **未対応**（Loki + Grafana 導入候補） | — |
+
+ArgoCD UI 経由は `https://argocd.riri-inferno.com/` → Application 選択 → resource tree から Pod を click → ダイアログで Logs タブ。コンテナ切替もここで可能。
+
+CLI フル機能版:
+```bash
+# 直近 100 行
+ssh riri-inferno@raspi5.local 'sudo k3s kubectl -n <ns> logs deploy/<name> --tail=100'
+
+# tail -f 相当
+ssh riri-inferno@raspi5.local 'sudo k3s kubectl -n <ns> logs deploy/<name> -f'
+
+# 1 つ前の Pod インスタンス（再起動後に直前ログ追跡）
+ssh riri-inferno@raspi5.local 'sudo k3s kubectl -n <ns> logs deploy/<name> --previous'
+```
+
 ---
 
 ## 今後の追加予定
