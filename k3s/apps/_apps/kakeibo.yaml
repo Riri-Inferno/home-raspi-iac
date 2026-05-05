@@ -17,6 +17,14 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: kakeibo
+  # Keel が Pod template に書く update-time annotation は selfHeal の対象外にする。
+  # これが無いと Keel が rollout を打った直後に ArgoCD selfHeal が annotation を巻き戻して
+  # 結果的に何も更新されない（=Keel と ArgoCD の永久ループ）。
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/metadata/annotations/keel.sh~1update-time
   syncPolicy:
     automated:
       prune: true

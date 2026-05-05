@@ -321,6 +321,79 @@ ssh riri-inferno@raspi5.local 'sudo k3s kubectl -n <ns> logs deploy/<name> -f'
 ssh riri-inferno@raspi5.local 'sudo k3s kubectl -n <ns> logs deploy/<name> --previous'
 ```
 
+### image 自動追従（Keel）
+
+`:latest` のような mutable tag を運用するアプリで「registry を更新したら k3s 上の Pod も自動でロールアウト」を実現する仕組み。手動 `kubectl rollout restart` 不要。
+
+**仕組み**:
+
+```mermaid
+flowchart TD
+    Keel["Keel Pod<br/>(namespace: keel)"]
+    GHCR["GHCR :latest<br/>(registry)"]
+    Deploy["対象 Deployment"]
+    Pod["新 Pod 起動<br/>imagePullPolicy: Always で<br/>registry から fresh pull"]
+
+    Keel -- "@every 5m polling" --> GHCR
+    GHCR -. "digest 変化を検出" .-> Keel
+    Keel -- "spec.template.metadata.annotations<br/>[keel.sh/update-time] 書き込み<br/>(image field は不変)" --> Deploy
+    Deploy -- "Pod template diff で<br/>k8s が rollout 駆動" --> Pod
+    Pod -- "image pull" --> GHCR
+```
+
+**git は触らない**。意図的に「registry が真の source of truth」と扱う設計。digest pin で git に書き戻す Image Updater 系とは方針が逆（commit ノイズが残らない）。
+
+**有効化（Deployment 側 annotation で opt-in）**:
+
+```yaml
+metadata:
+  annotations:
+    keel.sh/policy: force            # registry 更新で常に追従
+    keel.sh/match-tag: "true"        # 同じ tag (=latest) の digest 変化のみ追従、tag 検知ではない
+    keel.sh/trigger: poll            # webhook 不要、polling で動く
+    keel.sh/pollSchedule: "@every 5m"
+```
+
+**ArgoCD selfHeal との両立**:
+
+Keel は対象 Deployment の `spec.template.metadata.annotations[keel.sh/update-time]` に rollout の度に現在時刻を書き込む。これは Git 定義に存在しないため、selfHeal=true の Application では即座に巻き戻されてしまう。これを回避するため、**Keel 監視対象アプリの Application には `ignoreDifferences` でその annotation を除外**する:
+
+```yaml
+# _apps/<app>.yaml
+spec:
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/metadata/annotations/keel.sh~1update-time   # ~1 = JSON Pointer の "/" エスケープ
+```
+
+これで selfHeal は引き続き image 等の重要フィールドを protect しつつ、Keel の trigger annotation だけは介入しない。
+
+**動作確認**:
+
+```bash
+# Keel Pod 起動確認
+ssh riri-inferno@raspi5.local 'sudo k3s kubectl -n keel get pods'
+
+# 監視対象として認識しているか
+ssh riri-inferno@raspi5.local 'sudo k3s kubectl -n keel logs deploy/keel --tail=100 | grep -i "tracked\|polling\|<deployment-name>"'
+
+# 実際に rollout が走ったか（annotation が更新されているか）
+ssh riri-inferno@raspi5.local 'sudo k3s kubectl -n <ns> get deploy <name> -o jsonpath="{.spec.template.metadata.annotations.keel\.sh/update-time}"'
+```
+
+**監視を解除したいとき**:
+
+Deployment から `keel.sh/*` annotation 群を削除。`_apps/<app>.yaml` の `ignoreDifferences` も外して構わない（残しても害はない）。
+
+**新規アプリで Keel 自動追従を有効化する流れ**:
+
+1. アプリの Deployment に上記の `keel.sh/*` annotation を追加
+2. `_apps/<app>.yaml` の Application に上記 `ignoreDifferences` を追加
+3. PR → merge → ArgoCD 同期
+4. Keel ログで対象 image を tracked と認識しているか確認
+
 ---
 
 ## 今後の追加予定

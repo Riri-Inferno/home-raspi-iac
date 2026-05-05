@@ -1,0 +1,46 @@
+---
+# Keel: registry の :latest digest 変化を polling で検知 → 該当 Deployment の Pod template に
+# keel.sh/update-time annotation を書き込んで rollout 駆動。image field 自体は同値再 set のため変化なし。
+# git は触らない。kakeibo backend / frontend に annotation で opt-in する（各 Deployment 側）。
+#
+# ArgoCD selfHeal との衝突回避: Keel が書く `keel.sh/update-time` annotation を kakeibo Application 側で
+# `ignoreDifferences` 指定することで、selfHeal が rollout 直後に差分を巻き戻す事故を防ぐ。
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: keel
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://charts.keel.sh
+    chart: keel
+    targetRevision: 1.2.0
+    helm:
+      releaseName: keel
+      values: |
+        # ghcr.io/keel-hq/keel が default、arm64 multi-arch 対応済 → 上書き不要
+        polling:
+          enabled: true
+          # Deployment 個別 annotation で per-resource schedule できるが、default も念のため 5 分に統一
+          defaultSchedule: "@every 5m"
+        # k3s 上で Helm release を Keel 経由で更新する用途は無いので Helm provider は無効化
+        helmProvider:
+          enabled: false
+        notificationLevel: info
+        # webhook 受信用の Service / WebhookRelay は不要（poll only 構成）
+        service:
+          enabled: false
+        webhookRelay:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: keel
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
