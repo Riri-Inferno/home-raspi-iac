@@ -9,6 +9,12 @@ metadata:
     # Reloader: kakeibo-config / kakeibo-secret / kakeibo-wif-config の変更で
     # 自動 rollout restart する。
     reloader.stakater.com/auto: "true"
+    # Keel: registry の :latest digest 変化を 5 分間隔で polling 検知 → rollout 駆動。
+    # match-tag=true で「同じ tag (=latest) の digest 変化のみ」追従、tag 検知ではない。
+    keel.sh/policy: force
+    keel.sh/match-tag: "true"
+    keel.sh/trigger: poll
+    keel.sh/pollSchedule: "@every 5m"
 spec:
   replicas: 1
   selector:
