@@ -12,7 +12,7 @@ data:
   POSTGRES_DB: "appdb"
 
   # ASP.NET Core
-  ASPNETCORE_ENVIRONMENT: "Production"
+  ASPNETCORE_ENVIRONMENT: "Development"
   ASPNETCORE_URLS: "http://+:8080"
 
   # GCP / WIF
