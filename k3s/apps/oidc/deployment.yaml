@@ -4,6 +4,11 @@ kind: Deployment
 metadata:
   name: oidc-server
   namespace: oidc
+  annotations:
+    # ConfigMap (oidc-content / oidc-nginx-config) は subPath mount のため
+    # 自動更新されない。Reloader でクラスタ再構築や JWKS rotation 時に
+    # Pod を rollout して新値を反映させる。
+    reloader.stakater.com/auto: "true"
 spec:
   replicas: 1
   selector:
