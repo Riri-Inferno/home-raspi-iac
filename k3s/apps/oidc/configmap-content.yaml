@@ -1,8 +1,9 @@
 ---
 # k3s が発行する SA token の検証に必要な OIDC discovery / JWKS を静的に配信する。
 # issuer / jwks_uri は外部公開 URL に書き換え済。
-# JWKS の内容は k3s の SA signing key を反映（service-account-issuer 変更後も鍵自体は不変）。
-# 万一 kid が変わったら、/openid/v1/jwks を再取得して更新すること。
+# JWKS の内容は k3s の SA signing key を反映する。
+# クラスタ完全再構築で k3s の signing key が新規発行され、kid が変化した
+# 同様の再構築ごとに /openid/v1/jwks を取り直して更新すること。
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -18,4 +19,4 @@ data:
       "id_token_signing_alg_values_supported": ["RS256"]
     }
   jwks: |
-    {"keys":[{"use":"sig","kty":"RSA","kid":"nh3NBsVXs4openk8tm4wQWgq0bOSf4j3OmPVvyWtKp0","alg":"RS256","n":"xmWtHSAYQeBjZlrm0rjbxDDlk2HZ3NRk9xXTkc8hEM7tATgx0cfMEqi-1VU7lC6U3bexdjfS2spuJzs5WLGBaBtkmqI3VPVj5h6VwCF5fJInytz_ELVOYexI3KmRxTtmH0ucL-4K-9RzQkI-EqGQ1l0uEoVimxQ3zqf4eLPb1tTr0ggUS1VVSJNfpaZPsylyrDP5xAPYcVphbok8lxMOWnvgFEnRGSwauA0Eigz3I_9EwXcarh7n8i529n-bCe0rjpugMNqaLbXtmrKQzhWqZGu8F56fe50dMhHCkUmn6nKJgOV4wJE1W7oVxvOGtgAt6FUquiRQss7nx6aZA4c1ZQ","e":"AQAB"}]}
+    {"keys":[{"use":"sig","kty":"RSA","kid":"0a5m7cN3iiCDTAJN5ZFoC5-PFGFz0CEjf_DntW5PeWY","alg":"RS256","n":"1ClNH-W9kCGJ5j1pwkq5UsFpiS4ubOgW15mVVygp38d5EBHMrd-iZekyE3bPImGkbR2hlFNv7Z5mSMrbsN4Bm3_I5GCAr0Xu3EDYkfc0-Qg9Nov0Dnqetyp9Em9_Lx9jHUsBAkXyunWaEcdrsY4FEN3FmKJmrItbD2bMvsGNMqSYPeoPQ0CkD-oP1Wb9zgJncvGlZKyi-thsHHNSEnWZHVNEI0Ebj3Cn17maq0hFz7hQKG_YRCF8JO97GddtMfcw7veDGFQkjN99cZBPu0psApqW84WuHc-jGhGh3P_aftHhnV3LrvwnrO88JK6FeZJAvDiU1P5mpoidVVIPPYp5vQ","e":"AQAB"}]}

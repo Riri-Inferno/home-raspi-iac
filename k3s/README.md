@@ -8,8 +8,10 @@
 | コンポーネント       | 役割                                       | 備考                  |
 |--------------------|-------------------------------------------|----------------------|
 | k3s                | 軽量 Kubernetes ディストリビューション        | API: `:6443`         |
-| ArgoCD             | GitOps コントローラ（Web UI 付き）           | port-forward で公開    |
+| ArgoCD             | GitOps コントローラ（Web UI 付き）           | Cloudflare Tunnel 経由公開（`argocd.riri-inferno.com`） |
 | sealed-secrets     | Git に乗せる Secret の暗号化コントローラ      | Bitnami              |
+| Reloader           | ConfigMap/Secret 変更時に対応 Deployment を rollout | Stakater Helm chart |
+| Keel               | image registry の `:latest` digest 変化を polling → 該当 Deployment を rollout（git は触らない） | keel.sh Helm chart |
 | Ansible            | k3s 本体・基盤コンポーネントの初期インストール | `bootstrap/` 配下    |
 
 ## レイヤ分担
@@ -72,24 +74,34 @@ k3s/
     ├── _apps/                # 子 Application マニフェスト群（root が同期する対象）
     │   ├── argocd.yaml       # Application: argocd → k3s/apps/argocd/
     │   ├── cloudflared.yaml  # Application: cloudflared → k3s/apps/cloudflared/
-    │   └── monitoring.yaml   # Application: monitoring → k3s/apps/monitoring/
+    │   ├── kakeibo.yaml      # Application: kakeibo → k3s/apps/kakeibo/
+    │   ├── keel.yaml         # Application: keel → keel.sh Helm chart（path 配下なし）
+    │   ├── monitoring.yaml   # Application: monitoring → k3s/apps/monitoring/
+    │   ├── oidc.yaml         # Application: oidc → k3s/apps/oidc/
+    │   └── reloader.yaml     # Application: reloader → stakater Helm chart（path 配下なし）
     ├── argocd/               # ArgoCD 自身の SealedSecret（admin password）
-    ├── cloudflared/          # ArgoCD 外部公開用 cloudflared
-    └── monitoring/           # Prometheus / Grafana / node-exporter / cAdvisor
+    ├── cloudflared/          # ArgoCD / kakeibo / oidc 外部公開用 cloudflared
+    ├── kakeibo/              # 家計簿アプリ（namespace / SA / WIF / postgres / backend / frontend）
+    ├── monitoring/           # Prometheus / Grafana / node-exporter / cAdvisor
+    └── oidc/                 # WIF 用 OIDC discovery 静的配信（nginx）
 ```
 
 ## ArgoCD 構造（App of Apps）
 
-| Application | 範囲 | 担当 path |
+| Application | 範囲 | 担当 path / source |
 |---|---|---|
 | `root` | `_apps/` のみ監視。子 Application を作る／消す | `k3s/apps/_apps/` |
-| `argocd` | argocd namespace 内の SealedSecret 等 | `k3s/apps/argocd/` |
+| `argocd` | argocd ns 内の SealedSecret 等 | `k3s/apps/argocd/` |
 | `cloudflared` | k3s tunnel 用 cloudflared 一式 | `k3s/apps/cloudflared/` |
+| `kakeibo` | 家計簿アプリ一式（namespace / SA / WIF / postgres / backend / frontend） | `k3s/apps/kakeibo/` |
+| `keel` | image 自動追従 controller | Helm chart `https://charts.keel.sh` |
 | `monitoring` | Prometheus / Grafana / exporter 群 | `k3s/apps/monitoring/` |
+| `oidc` | WIF 用 OIDC discovery 静的配信（nginx） | `k3s/apps/oidc/` |
+| `reloader` | ConfigMap/Secret 変更時の自動 rollout | Helm chart `https://stakater.github.io/stakater-charts` |
 
 - root は `prune: false`（誤削除防止、子 Application 単位の手動確認を要請）
 - 各子 Application は `prune: true`（実 resource を厳密に管理）
-- 新アプリ追加 = `_apps/<name>.yaml` と `<name>/` 配下のマニフェストを 2 セットで足す
+- 新アプリ追加 = `_apps/<name>.yaml` と `<name>/` 配下のマニフェストを 2 セットで足す（Helm chart で展開する場合は path 配下なしで `_apps/<name>.yaml` のみ）
 
 ---
 
@@ -396,8 +408,46 @@ Deployment から `keel.sh/*` annotation 群を削除。`_apps/<app>.yaml` の `
 
 ---
 
+## クラスタ完全再構築の手順（SSD 故障 / 移植 / DR ドリル）
+
+「Git = source of truth」の検証兼 DR ドリル。2026-05-07 に SD → NVMe 移植時に実施した手順を一般化したもの。
+
+### 必須事前準備（再構築開始前）
+
+1. **sealed-secrets master key の所在確認**（オフラインバックアップ。これが無いと SealedSecret 全件が復号不能で詰む）
+2. **必要なら kakeibo-db の pg_dump を取り出す**（cluster 停止前に最終取得）
+3. **OIDC JWKS の旧値を控える**（gotcha 避けの参考用）: `sudo k3s kubectl get --raw /openid/v1/jwks`
+
+### Phase 1〜10 概観
+
+| # | 内容 | 主体 |
+|---|---|---|
+| 1 | 新ストレージに Raspberry Pi OS Lite arm64 を flash + 初期設定（ssh / userconf.txt / hostname / cmdline.txt に **NVMe APST 対策** 追加） | user / agent |
+| 2 | EEPROM の `BOOT_ORDER` を新ストレージ優先に変更（NVMe なら `0xf416`） | user / agent |
+| 3 | 新ストレージから boot → SSH 疎通確認（known_hosts は事前クリーン） | agent |
+| 4 | NOPASSWD sudo 設定（Ansible 実行のため、初回 1 回のみ tty で password 入力が必要） | user |
+| 5 | `cd k3s/bootstrap && ansible-playbook -i inventory.ini site.yml` | user / agent |
+| 6 | master key restore + sealed-secrets-controller rollout restart | agent |
+| 7 | argocd-secret 衝突解消（既存 Secret delete + controller restart 再 reconcile） | agent |
+| 8 | **OIDC JWKS の kid 変化** を `configmap-content.yaml` に反映する PR → merge | agent + user |
+| 9 | kakeibo-db に pg_restore（root + kakeibo Application の selfHeal 一時 OFF → backend scale 0 → restore → scale 1 → selfHeal ON） | agent |
+| 10 | 全 Application Synced/Healthy 確認、外部 DNS 経由動作確認、旧ストレージは数日 rollback 用に保管 | agent + user |
+
+### 落とし穴
+
+- **NVMe SSD APST バグ**: `/boot/firmware/cmdline.txt` 末尾に `nvme_core.default_ps_max_latency_us=0 pcie_aspm=off pcie_port_pm=off` を追加しないと controller が 5〜10 分で死ぬ（YEESTOR / Phison 系廉価 SSD で頻発）
+- **OIDC JWKS の kid 変化**: k3s 完全再構築で SA signing key が新規発行 → JWKS の `kid` / `n` が変わる → `k3s/apps/oidc/configmap-content.yaml` を更新しないと WIF が壊れる（kakeibo backend の Vertex AI / GCS 呼び出し失敗）
+- **selfHeal 階層**: pg_restore 等で一時的に Application の状態を Git と乖離させる場合、root + 子 Application 両方の selfHeal を OFF（root の selfHeal patch は ArgoCD に巻き戻されない、root 自身は cluster 内で唯一 unmanaged）
+- **argocd-secret 衝突**: ArgoCD install 直後に作られる Secret は SealedSecret 管理ではない → SealedSecret の `argocd-secret` と衝突 → 既存 Secret 削除 + controller restart で SealedSecret から再生成
+- **sudo password**: 新 OS は default で NOPASSWD sudo が無いので、Ansible 実行前に `/etc/sudoers.d/010-<user>-nopasswd` を仕込む
+
+詳細は agent memory（`project_*` / `feedback_*`）と CLAUDE.md の「既知の制約・注意点」を参照。
+
+---
+
 ## 今後の追加予定
 
-- [ ] Ingress Controller 整備（k3s 同梱 Traefik で正式 URL 化、port-forward 撤去）
-- [ ] ArgoCD の Cloudflare Tunnel 経由公開（Cloudflare Access で認証ゲート）
-- [ ] コンテナレジストリ確定（GHCR or セルフホスト）
+- [ ] Loki / Promtail でログ集約（数日前のログ遡り問題）
+- [ ] Alertmanager（Slack / LINE 通知）
+- [ ] dashboard JSON の IaC 化（必要になったら、UI 完結でも可）
+- [ ] Ansible playbook に NVMe APST 対策の cmdline 編集タスクを統合（再構築時の手作業を削減）
