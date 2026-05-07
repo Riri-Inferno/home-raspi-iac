@@ -51,12 +51,15 @@ flowchart TD
 
 | レイヤ | ツール | 役割 |
 |---|---|---|
-| ハードウェア / OS | Raspberry Pi 5 + Raspberry Pi OS | 物理ホスト（手動セットアップ） |
+| ハードウェア / OS | Raspberry Pi 5 + Raspberry Pi OS Lite (arm64, trixie) | 物理ホスト（手動セットアップ） |
+| ストレージ | NVMe SSD 256 GB（M.2 HAT 経由） | rootfs 永続化。SD カードは boot fallback として保持 |
 | プロビジョニング | **Ansible** | k3s 本体 + 基盤コンポーネントの初期構築（冪等） |
 | オーケストレーション | **k3s** | 軽量 Kubernetes |
 | GitOps | **ArgoCD** | リポジトリ → クラスタの同期、UI 付き |
 | シークレット管理 | **sealed-secrets**（Bitnami） | Git に乗せられる暗号化 Secret |
 | 監視 | Prometheus + Grafana + node-exporter + cAdvisor | k3s 上で運用、PVC 永続化 |
+| image 自動追従 | **Keel** | registry の `:latest` digest 変化を polling → 該当 Deployment を rollout（git は触らない） |
+| ConfigMap/Secret 反映 | **Stakater Reloader** | ConfigMap/Secret 変更時に対応 Deployment を rollout |
 
 ## ディレクトリ
 
@@ -106,5 +109,5 @@ ansible-playbook -i inventory.ini site.yml
 - [ ] cloudflared metrics endpoint を Prometheus 監視対象に追加
 - [ ] Grafana / Prometheus も Cloudflare Tunnel + Access 経由公開
 - [ ] Cloudflare 設定の Terraform 化（Tunnel / DNS / Access を IaC 化）
-- [ ] kakeibo nginx config テンプレ化（kakeibo repo 側、`backend` Service alias 撤去のため）
 - [ ] dashboard JSON の IaC 化（必要になったら、UI 完結でも可）
+- [ ] Ansible playbook に NVMe APST 対策の cmdline 編集タスクを統合（再構築時の手作業を削減）
