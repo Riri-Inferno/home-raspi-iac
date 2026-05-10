@@ -24,6 +24,8 @@ spec:
       labels:
         app: ai-gateway
     spec:
+      # WIF: ai-gateway SA の token を projected で取り、WIF JSON と組み合わせて GCP に認証する。
+      serviceAccountName: ai-gateway
       containers:
         - name: ai-gateway
           image: ghcr.io/riri-inferno/ai-gateway-rs:main
@@ -35,6 +37,13 @@ spec:
                 name: ai-gateway-config
             - secretRef:
                 name: ai-gateway-secret
+          volumeMounts:
+            - name: gcp-token
+              mountPath: /var/run/secrets/tokens
+              readOnly: true
+            - name: wif-config
+              mountPath: /etc/gcp
+              readOnly: true
           livenessProbe:
             httpGet:
               path: /healthz
@@ -49,3 +58,14 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 5
+      volumes:
+        - name: gcp-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  audience: //iam.googleapis.com/projects/831303094058/locations/global/workloadIdentityPools/ai-gateway-pool/providers/ai-gateway-k3s
+                  expirationSeconds: 3600
+                  path: gcp-token
+        - name: wif-config
+          configMap:
+            name: ai-gateway-wif-config

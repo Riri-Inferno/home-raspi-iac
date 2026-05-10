@@ -1,0 +1,30 @@
+---
+# Workload Identity Federation の external_account 設定（ai-gateway 専用、kakeibo とは完全分離）。
+# この JSON 自体は識別子の集合で機密ではない（ConfigMap で配布可）。
+# Pod に projected SA token を併せてマウントすることで初めて GCP STS が token exchange する。
+#
+# 値の出所:
+#   audience                          → GCP WIF Provider 作成時の resource path
+#                                        (project number 831303094058 = portfolio-472717)
+#   service_account_impersonation_url → ai-gateway 専用 GCP SA。Vertex AI User ロールのみ付与
+#   credential_source.file            → Pod 内の SA token マウント先
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-gateway-wif-config
+  namespace: ai-gateway
+data:
+  wif.json: |
+    {
+      "type": "external_account",
+      "audience": "//iam.googleapis.com/projects/831303094058/locations/global/workloadIdentityPools/ai-gateway-pool/providers/ai-gateway-k3s",
+      "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+      "token_url": "https://sts.googleapis.com/v1/token",
+      "service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/ai-gateway-vertex@portfolio-472717.iam.gserviceaccount.com:generateAccessToken",
+      "credential_source": {
+        "file": "/var/run/secrets/tokens/gcp-token",
+        "format": {
+          "type": "text"
+        }
+      }
+    }
