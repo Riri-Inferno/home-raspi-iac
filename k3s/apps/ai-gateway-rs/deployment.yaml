@@ -1,0 +1,51 @@
+---
+# ai-gateway-rs (Rust / axum)。GHCR から pull、cluster 内 Pod 専用の AI API ゲートウェイ。
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-gateway
+  namespace: ai-gateway
+  annotations:
+    # Reloader: ai-gateway-config / ai-gateway-secret の変更で自動 rollout restart する。
+    reloader.stakater.com/auto: "true"
+    # Keel: registry の :main digest 変化を 5 分間隔で polling 検知 → rollout 駆動。
+    # match-tag=true で「同じ tag (=main) の digest 変化のみ」追従、tag 検知ではない。
+    keel.sh/policy: force
+    keel.sh/match-tag: "true"
+    keel.sh/trigger: poll
+    keel.sh/pollSchedule: "@every 5m"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-gateway
+  template:
+    metadata:
+      labels:
+        app: ai-gateway
+    spec:
+      containers:
+        - name: ai-gateway
+          image: ghcr.io/riri-inferno/ai-gateway-rs:main
+          ports:
+            - containerPort: 8080
+              name: http
+          envFrom:
+            - configMapRef:
+                name: ai-gateway-config
+            - secretRef:
+                name: ai-gateway-secret
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5

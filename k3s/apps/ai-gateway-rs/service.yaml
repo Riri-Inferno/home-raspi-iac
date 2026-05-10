@@ -1,0 +1,14 @@
+---
+# cluster 内呼び出し専用。FQDN: ai-gateway.ai-gateway.svc.cluster.local:8080
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-gateway
+  namespace: ai-gateway
+spec:
+  type: ClusterIP
+  selector:
+    app: ai-gateway
+  ports:
+    - port: 8080
+      targetPort: 8080
