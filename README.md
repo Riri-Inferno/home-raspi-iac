@@ -19,6 +19,7 @@ flowchart TD
                 MON["monitoring/"]
                 OIDC["oidc/"]
                 KAK["kakeibo/"]
+                AIG["ai-gateway-rs/"]
             end
         end
     end
@@ -32,12 +33,14 @@ flowchart TD
             ROOT --> APPO["Application: oidc"]
             ROOT --> APPK["Application: kakeibo"]
             ROOT --> APPR["Application: reloader"]
+            ROOT --> APPAI["Application: ai-gateway-rs"]
             APPA -.-> RESA["argocd ns の<br/>SealedSecret"]
             APPC -.-> RESC["cloudflared Pod<br/>(k3s tunnel)"]
             APPM -.-> RESM["Prometheus / Grafana<br/>node-exporter / cAdvisor"]
             APPO -.-> RESO["nginx<br/>OIDC discovery 配信"]
             APPK -.-> RESK["kakeibo-frontend / backend / db"]
             APPR -.-> RESRL["Reloader controller"]
+            APPAI -.-> RESAI["ai-gateway Pod<br/>(Rust / axum, ClusterIP のみ)"]
         end
     end
 
@@ -72,6 +75,7 @@ flowchart TD
     - `k3s/apps/oidc/` — WIF 用 OIDC discovery 静的配信
     - `k3s/apps/monitoring/` — Prometheus / Grafana / exporter 群
     - `k3s/apps/kakeibo/` — 家計簿アプリ（[詳細](k3s/apps/kakeibo/README.md)）
+    - `k3s/apps/ai-gateway-rs/` — 内部向け AI API ゲートウェイ（Rust / axum）。cluster 内 Pod 専用、ClusterIP のみ
 - [`.github/`](.github/) — PR テンプレート
 
 ## クイックスタート（クラスタ構築）
