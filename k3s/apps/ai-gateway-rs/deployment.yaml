@@ -29,6 +29,9 @@ spec:
       containers:
         - name: ai-gateway
           image: ghcr.io/riri-inferno/ai-gateway-rs:main
+          # :main は mutable tag。kubelet の default (IfNotPresent) だと Keel が rollout しても
+          # cache を再利用して新 digest を fetch しない。Always で毎回 registry を確認させる。
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
               name: http
