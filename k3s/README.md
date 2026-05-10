@@ -72,6 +72,7 @@ k3s/
 │       └── argocd/           # 本体 install + 自リポジトリ監視 root Application
 └── apps/
     ├── _apps/                # 子 Application マニフェスト群（root が同期する対象）
+    │   ├── ai-gateway-rs.yaml # Application: ai-gateway-rs → k3s/apps/ai-gateway-rs/
     │   ├── argocd.yaml       # Application: argocd → k3s/apps/argocd/
     │   ├── cloudflared.yaml  # Application: cloudflared → k3s/apps/cloudflared/
     │   ├── kakeibo.yaml      # Application: kakeibo → k3s/apps/kakeibo/
@@ -79,6 +80,7 @@ k3s/
     │   ├── monitoring.yaml   # Application: monitoring → k3s/apps/monitoring/
     │   ├── oidc.yaml         # Application: oidc → k3s/apps/oidc/
     │   └── reloader.yaml     # Application: reloader → stakater Helm chart（path 配下なし）
+    ├── ai-gateway-rs/        # 内部向け AI API ゲートウェイ（Rust / axum）。ClusterIP のみ、cluster 内 Pod 専用
     ├── argocd/               # ArgoCD 自身の SealedSecret（admin password）
     ├── cloudflared/          # ArgoCD / kakeibo / oidc 外部公開用 cloudflared
     ├── kakeibo/              # 家計簿アプリ（namespace / SA / WIF / postgres / backend / frontend）
@@ -91,6 +93,7 @@ k3s/
 | Application | 範囲 | 担当 path / source |
 |---|---|---|
 | `root` | `_apps/` のみ監視。子 Application を作る／消す | `k3s/apps/_apps/` |
+| `ai-gateway-rs` | 内部向け AI API ゲートウェイ（Rust / axum、ClusterIP のみ） | `k3s/apps/ai-gateway-rs/` |
 | `argocd` | argocd ns 内の SealedSecret 等 | `k3s/apps/argocd/` |
 | `cloudflared` | k3s tunnel 用 cloudflared 一式 | `k3s/apps/cloudflared/` |
 | `kakeibo` | 家計簿アプリ一式（namespace / SA / WIF / postgres / backend / frontend） | `k3s/apps/kakeibo/` |

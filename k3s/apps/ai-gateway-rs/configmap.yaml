@@ -1,0 +1,10 @@
+---
+# ai-gateway-rs の非機密 env
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-gateway-config
+  namespace: ai-gateway
+data:
+  GATEWAY_BIND: "0.0.0.0:8080"
+  RUST_LOG: "info,ai_gateway=info"
