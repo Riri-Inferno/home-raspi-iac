@@ -8,3 +8,8 @@ metadata:
 data:
   GATEWAY_BIND: "0.0.0.0:8080"
   RUST_LOG: "info,ai_gateway=info"
+  # Vertex AI 利用設定。VERTEX_PROJECT_ID が空なら上流で provider 未登録。
+  VERTEX_PROJECT_ID: "portfolio-472717"
+  VERTEX_LOCATION: "us-central1"
+  # WIF JSON のマウント先。ai-gateway-wif-config ConfigMap が /etc/gcp に展開される前提。
+  GOOGLE_APPLICATION_CREDENTIALS: "/etc/gcp/wif.json"
