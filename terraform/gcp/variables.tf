@@ -25,3 +25,9 @@ variable "tfstate_bucket_location" {
   type    = string
   default = "asia-northeast1"
 }
+
+variable "admin_user_email" {
+  type        = string
+  description = "Google account allowed to impersonate the App Engine default SA (for local dev / manual ops)."
+  default     = "takayo.uenter36@gmail.com"
+}
