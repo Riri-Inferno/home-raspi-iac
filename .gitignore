@@ -10,3 +10,12 @@ CLAUDE.md
 *master-key*.yml
 *private-key*.yaml
 *.kubeconfig
+
+# Terraform（.terraform.lock.hcl は commit する）
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
