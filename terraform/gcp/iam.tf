@@ -60,3 +60,19 @@ resource "google_storage_bucket_iam_member" "terraform_state_bucket_admin" {
   role   = "roles/storage.admin"
   member = "serviceAccount:${google_service_account.terraform_state.email}"
 }
+
+# Allow terraform-state SA to read/write project IAM policy itself.
+# Required by google_project_iam_member.* refresh / apply (calls resourcemanager.projects.{get,set}IamPolicy).
+resource "google_project_iam_member" "terraform_state_project_iam_admin" {
+  project = var.project_id
+  role    = "roles/resourcemanager.projectIamAdmin"
+  member  = "serviceAccount:${google_service_account.terraform_state.email}"
+}
+
+# Allow terraform-state SA to use enabled services (call API endpoints) — most service
+# accounts need this explicitly when the API call's quota consumer is the same project.
+resource "google_project_iam_member" "terraform_state_service_usage_consumer" {
+  project = var.project_id
+  role    = "roles/serviceusage.serviceUsageConsumer"
+  member  = "serviceAccount:${google_service_account.terraform_state.email}"
+}
