@@ -1,13 +1,13 @@
-resource "cloudflare_zero_trust_access_identity_provider" "terraform_managed_resource_0e774a9d-00d6-4685-a072-b39ea543cd06_0" {
+resource "cloudflare_zero_trust_access_identity_provider" "one_time_pin" {
   account_id = "626318c8e13be78d91dbb56330cc71e5"
   name       = "One Time Pin"
   type       = "onetimepin"
   config     = {}
 }
 
-resource "cloudflare_zero_trust_access_application" "terraform_managed_resource_829045b5-750e-49b4-b8ec-743bc1ad01e6_0" {
+resource "cloudflare_zero_trust_access_application" "argocd" {
   account_id                 = "626318c8e13be78d91dbb56330cc71e5"
-  allowed_idps               = ["0e774a9d-00d6-4685-a072-b39ea543cd06"]
+  allowed_idps               = [cloudflare_zero_trust_access_identity_provider.one_time_pin.id]
   app_launcher_visible       = true
   auto_redirect_to_identity  = true
   domain                     = "argocd.riri-inferno.com"
@@ -33,12 +33,12 @@ resource "cloudflare_zero_trust_access_application" "terraform_managed_resource_
     enabled = false
   }
   policies = [{
-    id         = "b28db54d-3dbb-4692-821e-a07bb1e85182"
+    id         = cloudflare_zero_trust_access_policy.allow_me.id
     precedence = 1
   }]
 }
 
-resource "cloudflare_zero_trust_access_policy" "terraform_managed_resource_b28db54d-3dbb-4692-821e-a07bb1e85182_0" {
+resource "cloudflare_zero_trust_access_policy" "allow_me" {
   account_id = "626318c8e13be78d91dbb56330cc71e5"
   decision   = "allow"
   name       = "Allow me"
@@ -56,4 +56,3 @@ resource "cloudflare_zero_trust_access_policy" "terraform_managed_resource_b28db
   }]
   require = []
 }
-

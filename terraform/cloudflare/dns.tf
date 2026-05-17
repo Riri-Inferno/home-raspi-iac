@@ -1,4 +1,4 @@
-resource "cloudflare_dns_record" "terraform_managed_resource_55d4c21d4f59f645415ac3d7b323e255_39" {
+resource "cloudflare_dns_record" "api_kakeibo" {
   content = "4c26acb4-6ab9-4fcc-961b-53968db80666.cfargotunnel.com"
   name    = "api-kakeibo.riri-inferno.com"
   proxied = true
@@ -11,7 +11,7 @@ resource "cloudflare_dns_record" "terraform_managed_resource_55d4c21d4f59f645415
   }
 }
 
-resource "cloudflare_dns_record" "terraform_managed_resource_da4cfe2c77df76aee7f349be44fc1557_40" {
+resource "cloudflare_dns_record" "argocd" {
   content = "4c26acb4-6ab9-4fcc-961b-53968db80666.cfargotunnel.com"
   name    = "argocd.riri-inferno.com"
   proxied = true
@@ -24,7 +24,7 @@ resource "cloudflare_dns_record" "terraform_managed_resource_da4cfe2c77df76aee7f
   }
 }
 
-resource "cloudflare_dns_record" "terraform_managed_resource_340047daf8badcbb3366329d7e4e2635_41" {
+resource "cloudflare_dns_record" "kakeibo" {
   content = "4c26acb4-6ab9-4fcc-961b-53968db80666.cfargotunnel.com"
   name    = "kakeibo.riri-inferno.com"
   proxied = true
@@ -37,7 +37,7 @@ resource "cloudflare_dns_record" "terraform_managed_resource_340047daf8badcbb336
   }
 }
 
-resource "cloudflare_dns_record" "terraform_managed_resource_bd8b78b664d08246f4aa1dbea6d5d4fd_42" {
+resource "cloudflare_dns_record" "oidc" {
   content = "4c26acb4-6ab9-4fcc-961b-53968db80666.cfargotunnel.com"
   name    = "oidc.riri-inferno.com"
   proxied = true
