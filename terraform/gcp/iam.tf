@@ -39,3 +39,24 @@ resource "google_service_account_iam_member" "appspot_user_token_creator" {
   role               = "roles/iam.serviceAccountTokenCreator"
   member             = "user:${var.admin_user_email}"
 }
+
+# Project-level roles needed for Terraform to manage GCP resources.
+# Granted to terraform-state SA so CI (and local) plan/apply work.
+
+resource "google_project_iam_member" "terraform_state_sa_admin" {
+  project = var.project_id
+  role    = "roles/iam.serviceAccountAdmin"
+  member  = "serviceAccount:${google_service_account.terraform_state.email}"
+}
+
+resource "google_project_iam_member" "terraform_state_wif_admin" {
+  project = var.project_id
+  role    = "roles/iam.workloadIdentityPoolAdmin"
+  member  = "serviceAccount:${google_service_account.terraform_state.email}"
+}
+
+resource "google_storage_bucket_iam_member" "terraform_state_bucket_admin" {
+  bucket = google_storage_bucket.tfstate.name
+  role   = "roles/storage.admin"
+  member = "serviceAccount:${google_service_account.terraform_state.email}"
+}
