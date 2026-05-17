@@ -1,0 +1,48 @@
+name: terraform-gcp-apply
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'terraform/gcp/**'
+      - 'terraform/.terraform-version'
+      - '.github/workflows/terraform-gcp-apply.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: terraform-gcp
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform/gcp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read terraform version
+        id: tfver
+        working-directory: .
+        run: echo "version=$(cat terraform/.terraform-version)" >> "$GITHUB_OUTPUT"
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ steps.tfver.outputs.version }}
+          terraform_wrapper: false
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/831303094058/locations/global/workloadIdentityPools/kakeibo-pool/providers/github-actions
+          service_account: terraform-state@portfolio-472717.iam.gserviceaccount.com
+
+      - name: terraform init
+        run: terraform init -input=false
+
+      - name: terraform apply
+        run: terraform apply -auto-approve -input=false
