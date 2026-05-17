@@ -63,6 +63,7 @@ flowchart TD
 | 監視 | Prometheus + Grafana + node-exporter + cAdvisor | k3s 上で運用、PVC 永続化 |
 | image 自動追従 | **Keel** | registry の `:latest` digest 変化を polling → 該当 Deployment を rollout（git は触らない） |
 | ConfigMap/Secret 反映 | **Stakater Reloader** | ConfigMap/Secret 変更時に対応 Deployment を rollout |
+| 外部 SaaS IaC | **Terraform** | GCP（state bucket / WIF / IAM）と Cloudflare（DNS / Tunnel / Access）をコード管理、state は GCS、CI/CD は GitHub Actions |
 
 ## ディレクトリ
 
@@ -76,7 +77,10 @@ flowchart TD
     - `k3s/apps/monitoring/` — Prometheus / Grafana / exporter 群
     - `k3s/apps/kakeibo/` — 家計簿アプリ（[詳細](k3s/apps/kakeibo/README.md)）
     - `k3s/apps/ai-gateway-rs/` — 内部向け AI API ゲートウェイ（Rust / axum）。cluster 内 Pod 専用、ClusterIP のみ
-- [`.github/`](.github/) — PR テンプレート
+- [`terraform/`](terraform/) — 外部 SaaS の IaC。詳細・運用ガイドは [terraform/README.md](terraform/README.md)
+  - `terraform/gcp/` — Terraform state を置く GCS bucket、CI 用 WIF、IAM binding、API 有効化
+  - `terraform/cloudflare/` — DNS / Tunnel / Access Application / Zero Trust 設定
+- [`.github/`](.github/) — PR テンプレート + Terraform 用 GitHub Actions workflow（plan on PR / apply on develop merge）
 
 ## クイックスタート（クラスタ構築）
 
@@ -107,11 +111,15 @@ ansible-playbook -i inventory.ini site.yml
 - **実機にソースを置かない**: イメージは外部レジストリから pull する pull 型運用
 - **シークレットは平文で commit しない**: `kubeseal` で暗号化した SealedSecret のみリポジトリへ
 - **再構築前提**: Ansible playbook + sealed-secrets 鍵バックアップで全体を再現可能に保つ
+- **外部 SaaS は dashboard / CLI 直編集 NG**: Terraform `.tf` 経由 PR → GitHub Actions の `plan` / `apply` だけが変更経路。drift 検知が無効化されるため
 
 ## 今後の追加予定
 
 - [ ] cloudflared metrics endpoint を Prometheus 監視対象に追加
 - [ ] Grafana / Prometheus も Cloudflare Tunnel + Access 経由公開
-- [ ] Cloudflare 設定の Terraform 化（Tunnel / DNS / Access を IaC 化）
+- [ ] DNS records の audit / cleanup（お名前.com 移管時の leftover を Terraform から削除 + apply）
+- [ ] Cloudflare リソース名のリネーム（cf-terraforming が生成した hash 名 → 意味のある名前に `terraform state mv`）
+- [ ] Terraform 用の drift 検知 cron（Actions schedule で日次 plan、差分時に issue 自動作成）
 - [ ] dashboard JSON の IaC 化（必要になったら、UI 完結でも可）
 - [ ] Ansible playbook に NVMe APST 対策の cmdline 編集タスクを統合（再構築時の手作業を削減）
+- [ ] `riri-inferno.com` を お名前.com → Cloudflare Registrar へ移管
