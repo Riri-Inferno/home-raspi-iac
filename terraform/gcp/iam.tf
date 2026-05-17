@@ -55,6 +55,16 @@ resource "google_project_iam_member" "terraform_state_wif_admin" {
   member  = "serviceAccount:${google_service_account.terraform_state.email}"
 }
 
+# Broad write access across resource types. Defense-in-depth で role を細かく分けるより、
+# WIF Provider 側の attribute_condition（repo pin）+ SA 側 IAM binding（repo pin）の
+# impersonation gate を境界線として運用する方針。IAM 管理は editor に含まれないため、
+# projectIamAdmin / serviceAccountAdmin / workloadIdentityPoolAdmin は別途必要。
+resource "google_project_iam_member" "terraform_state_editor" {
+  project = var.project_id
+  role    = "roles/editor"
+  member  = "serviceAccount:${google_service_account.terraform_state.email}"
+}
+
 resource "google_storage_bucket_iam_member" "terraform_state_bucket_admin" {
   bucket = google_storage_bucket.tfstate.name
   role   = "roles/storage.admin"
