@@ -20,3 +20,7 @@ CLAUDE.md
 *.tfvars.json
 crash.log
 crash.*.log
+
+# cf-terraforming が --terraform-binary-path 未指定時に勝手に download する binary
+terraform/cloudflare/terraform
+terraform/gcp/terraform
