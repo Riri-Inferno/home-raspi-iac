@@ -5,6 +5,7 @@ on:
     paths:
       - 'terraform/gcp/**'
       - 'terraform/.terraform-version'
+      - 'gcp-functions/**'
       - '.github/workflows/terraform-gcp-plan.yml'
   workflow_dispatch:
 

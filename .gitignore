@@ -24,3 +24,6 @@ crash.*.log
 # cf-terraforming が --terraform-binary-path 未指定時に勝手に download する binary
 terraform/cloudflare/terraform
 terraform/gcp/terraform
+
+# archive_file が cost_monitor 関数 zip を吐く出力先
+terraform/gcp/.build/
