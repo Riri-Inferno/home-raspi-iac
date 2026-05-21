@@ -86,3 +86,19 @@ resource "google_project_iam_member" "terraform_state_service_usage_consumer" {
   role    = "roles/serviceusage.serviceUsageConsumer"
   member  = "serviceAccount:${google_service_account.terraform_state.email}"
 }
+
+# Resource-level setIamPolicy permissions. `roles/editor` can create/update/delete
+# resources but does NOT grant *.setIamPolicy on individual resources (Secret,
+# Cloud Run service, etc.). projectIamAdmin only covers project-level IAM, not
+# per-resource. Each service that supports resource-level IAM needs its own admin.
+resource "google_project_iam_member" "terraform_state_secretmanager_admin" {
+  project = var.project_id
+  role    = "roles/secretmanager.admin"
+  member  = "serviceAccount:${google_service_account.terraform_state.email}"
+}
+
+resource "google_project_iam_member" "terraform_state_run_admin" {
+  project = var.project_id
+  role    = "roles/run.admin"
+  member  = "serviceAccount:${google_service_account.terraform_state.email}"
+}
