@@ -10,6 +10,15 @@ locals {
     "sts.googleapis.com",                  # WIF token exchange
     "storage.googleapis.com",              # GCS buckets (state backend, etc.)
     "serviceusage.googleapis.com",         # enable/disable other services
+    "cloudfunctions.googleapis.com",       # Cloud Functions Gen 2 (cost-monitor)
+    "run.googleapis.com",                  # Gen 2 functions execute on Cloud Run under the hood
+    "cloudbuild.googleapis.com",           # Build the function container image
+    "artifactregistry.googleapis.com",     # Built images are stored in Artifact Registry
+    "eventarc.googleapis.com",             # Pub/Sub → Function trigger plumbing
+    "pubsub.googleapis.com",               # Scheduler → Function fan-out topic
+    "cloudscheduler.googleapis.com",       # Daily cron that fires the cost-monitor
+    "secretmanager.googleapis.com",        # Discord webhook URL storage
+    "bigquery.googleapis.com",             # Billing export dataset + query target
   ])
 }
 
