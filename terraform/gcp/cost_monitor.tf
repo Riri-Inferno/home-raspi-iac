@@ -59,6 +59,11 @@ resource "google_secret_manager_secret_iam_member" "cost_monitor_secret_accessor
   secret_id = google_secret_manager_secret.discord_webhook_cost_monitor.id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.cost_monitor.email}"
+
+  # terraform-state SA needs roles/secretmanager.admin (granted in iam.tf) to
+  # call secretmanager.secrets.setIamPolicy. Pin order so the project grant
+  # applies before this resource-level binding.
+  depends_on = [google_project_iam_member.terraform_state_secretmanager_admin]
 }
 
 # --- Discord webhook secret (value populated out-of-band) ---------------------
@@ -171,6 +176,10 @@ resource "google_cloud_run_service_iam_member" "cost_monitor_invoker" {
   service  = google_cloudfunctions2_function.cost_monitor.name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${google_service_account.cost_monitor.email}"
+
+  # terraform-state SA needs roles/run.admin (granted in iam.tf) to call
+  # run.services.setIamPolicy. Pin order so the project grant applies first.
+  depends_on = [google_project_iam_member.terraform_state_run_admin]
 }
 
 resource "google_project_iam_member" "cost_monitor_eventarc_receiver" {
