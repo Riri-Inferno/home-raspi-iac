@@ -142,7 +142,12 @@ def _post_discord(webhook_url: str, embed: dict) -> None:
     req = urllib.request.Request(
         webhook_url,
         data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+
+            # ユーザーエージェントを明示的に指定しないとDiscord側にはじかれる
+            "User-Agent": "home-raspi-iac-cost-monitor (+https://github.com/Riri-Inferno/home-raspi-iac, 1.0)",
+        },
     )
     with urllib.request.urlopen(req, timeout=10) as resp:
         resp.read()
