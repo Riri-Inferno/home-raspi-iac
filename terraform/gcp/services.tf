@@ -19,6 +19,7 @@ locals {
     "cloudscheduler.googleapis.com",       # Daily cron that fires the cost-monitor
     "secretmanager.googleapis.com",        # Discord webhook URL storage
     "bigquery.googleapis.com",             # Billing export dataset + query target
+    "billingbudgets.googleapis.com",       # Cloud Billing Budget (cost-alert Phase 2)
   ])
 }
 
