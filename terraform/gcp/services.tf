@@ -20,6 +20,7 @@ locals {
     "secretmanager.googleapis.com",        # Discord webhook URL storage
     "bigquery.googleapis.com",             # Billing export dataset + query target
     "billingbudgets.googleapis.com",       # Cloud Billing Budget (cost-alert Phase 2)
+    "cloudbilling.googleapis.com",         # Billing account IAM (google_billing_account_iam_member)
   ])
 }
 

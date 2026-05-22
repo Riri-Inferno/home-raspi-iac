@@ -36,16 +36,11 @@ resource "google_pubsub_topic" "cost_alert" {
   depends_on = [google_project_service.required]
 }
 
-# GCP claims that the billing-budgets service principal manages its own
-# permissions on the topic since 2022, so this binding may be redundant.
-# Granting it defensively to avoid first-fire 403 if the auto-grant fails.
-resource "google_pubsub_topic_iam_member" "billing_budget_publisher" {
-  topic  = google_pubsub_topic.cost_alert.name
-  role   = "roles/pubsub.publisher"
-  member = "serviceAccount:billing-budgets@system.gserviceaccount.com"
-
-  depends_on = [google_project_iam_member.terraform_state_pubsub_admin]
-}
+# Note: billing-budgets@system.gserviceaccount.com への pubsub.publisher 付与は
+# GCP が budget 作成時に自動で行うため、ここでは管理しない。手動 binding しようと
+# しても `Service account ... does not exist` (system SA は個別 member として
+# 解決不可) で失敗するので、IaC化は不可能。万一 auto-grant が壊れた場合は
+# GCP コンソールから手動付与する。
 
 # --- Cloud Billing Budgets ---------------------------------------------------
 # Budget 1: free-tier exceeded — fires when net spend > ¥1 (≈ free tier broken).
