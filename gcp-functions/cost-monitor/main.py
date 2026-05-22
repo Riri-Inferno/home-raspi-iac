@@ -49,6 +49,12 @@ def _yesterday_bounds():
     return yesterday_start, today_start
 
 
+def _month_to_date_bounds():
+    now = datetime.now(TZ)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    return month_start, now
+
+
 def _query_yesterday_costs(client: bigquery.Client):
     start, end = _yesterday_bounds()
     table_fqn = f"`{PROJECT_ID}.{BILLING_DATASET}.{BILLING_TABLE}`"
@@ -75,6 +81,32 @@ def _query_yesterday_costs(client: bigquery.Client):
     )
     rows = list(job.result())
     return start, end, rows
+
+
+def _query_month_to_date_total(client: bigquery.Client):
+    start, end = _month_to_date_bounds()
+    table_fqn = f"`{PROJECT_ID}.{BILLING_DATASET}.{BILLING_TABLE}`"
+    sql = f"""
+    SELECT
+      SUM(cost) AS cost,
+      ANY_VALUE(currency) AS currency
+    FROM {table_fqn}
+    WHERE usage_start_time >= @start
+      AND usage_start_time <  @end
+    """
+    job = client.query(
+        sql,
+        job_config=bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("start", "TIMESTAMP", start),
+                bigquery.ScalarQueryParameter("end", "TIMESTAMP", end),
+            ]
+        ),
+    )
+    row = next(iter(job.result()), None)
+    total = float(row.cost) if row and row.cost is not None else 0.0
+    currency = row.currency if row and row.currency else "JPY"
+    return start, end, total, currency
 
 
 def _format_money(amount: float, currency: str) -> str:
@@ -107,8 +139,8 @@ def _build_embed_error(err: Exception) -> dict:
     }
 
 
-def _build_embed_summary(start, end, rows) -> dict:
-    currency = rows[0].currency if rows else "JPY"
+def _build_embed_summary(start, end, rows, mtd_start, mtd_total, mtd_currency) -> dict:
+    currency = rows[0].currency if rows else mtd_currency
     total = sum(r.cost for r in rows)
     top = rows[:10]
 
@@ -121,13 +153,17 @@ def _build_embed_summary(start, end, rows) -> dict:
         breakdown = "_(該当データなし)_"
 
     date_label = start.strftime("%Y-%m-%d")
+    mtd_label = mtd_start.strftime("%Y-%m")
     return {
         "title": f"📊 GCP 日次コスト — {date_label}",
-        "description": f"**合計: {_format_money(total, currency)}**",
+        "description": (
+            f"**昨日: {_format_money(total, currency)}** / "
+            f"**当月累計 ({mtd_label}): {_format_money(mtd_total, mtd_currency)}**"
+        ),
         "color": COLOR_OK if total > 0 else COLOR_WARN,
         "fields": [
             {
-                "name": "サービス別 (上位10件)",
+                "name": "昨日のサービス別 (上位10件)",
                 "value": breakdown,
                 "inline": False,
             }
@@ -165,7 +201,8 @@ def main(_cloud_event) -> None:
     try:
         client = bigquery.Client(project=PROJECT_ID)
         start, end, rows = _query_yesterday_costs(client)
-        embed = _build_embed_summary(start, end, rows)
+        mtd_start, _mtd_end, mtd_total, mtd_currency = _query_month_to_date_total(client)
+        embed = _build_embed_summary(start, end, rows, mtd_start, mtd_total, mtd_currency)
     except Exception as e:
         log.exception("cost query failed")
         embed = _build_embed_error(e)

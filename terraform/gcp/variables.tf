@@ -60,6 +60,6 @@ variable "billing_export_dataset" {
 
 variable "billing_export_table" {
   type        = string
-  description = "Table name within billing_export_dataset that GCP populates (e.g. 'gcp_billing_export_v1_XXXXXX_XXXXXX_XXXXXX'). Empty until Billing Export is enabled — the function logs a clear error and skips the query when empty."
-  default     = ""
+  description = "Table name within billing_export_dataset that GCP populates. For 'detailed usage cost' export the prefix is gcp_billing_export_resource_v1_<billing_account_id>. Empty until Billing Export is enabled — the function posts a setup-required notice when empty."
+  default     = "gcp_billing_export_resource_v1_01DBEF_9C9A35_EBFD81"
 }
