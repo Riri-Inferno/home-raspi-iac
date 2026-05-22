@@ -128,4 +128,8 @@ resource "google_billing_account_iam_member" "terraform_state_billing_admin" {
   billing_account_id = var.billing_account_id
   role               = "roles/billing.admin"
   member             = "serviceAccount:${google_service_account.terraform_state.email}"
+
+  # cloudbilling.googleapis.com 有効化を待つ（refresh 時の getIamPolicy が
+  # 「API not enabled」で 403 にならないように）。
+  depends_on = [google_project_service.required]
 }
