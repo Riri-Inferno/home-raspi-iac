@@ -63,3 +63,23 @@ variable "billing_export_table" {
   description = "Table name within billing_export_dataset that GCP populates. For 'detailed usage cost' export the prefix is gcp_billing_export_resource_v1_<billing_account_id>. Empty until Billing Export is enabled — the function posts a setup-required notice when empty."
   default     = "gcp_billing_export_resource_v1_01DBEF_9C9A35_EBFD81"
 }
+
+# --- cost-alert (Phase 2: Cloud Billing Budget → Discord) ---------------------
+
+variable "billing_account_id" {
+  type        = string
+  description = "Cloud Billing account ID this project is linked to. Format: XXXXXX-XXXXXX-XXXXXX. Required for google_billing_budget."
+  default     = "01DBEF-9C9A35-EBFD81"
+}
+
+variable "cost_alert_free_tier_budget_jpy" {
+  type        = number
+  description = "Budget amount in JPY for the 'free-tier-exceeded' notification. ¥1 means: any net spend > ¥1 triggers a warn (effectively 'free tier exceeded')."
+  default     = 1
+}
+
+variable "cost_alert_critical_budget_jpy" {
+  type        = number
+  description = "Budget amount in JPY for the monthly spend cap. Notifications fire at 50% (info), 80% (warn), and 100% (crit) of this amount."
+  default     = 1000
+}
