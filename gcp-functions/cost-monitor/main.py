@@ -55,19 +55,28 @@ def _month_to_date_bounds():
     return month_start, now
 
 
+# Net cost = cost + SUM(credits.amount). Credits are negative numbers (discounts
+# / free-tier offsets) so this matches GCP Console's billed-amount display.
+# project.id IS NULL captures billing-account-level adjustments
+# (rounding_error etc.) that don't belong to a specific project.
+_NET_COST_EXPR = "cost + IFNULL((SELECT SUM(c.amount) FROM UNNEST(credits) c), 0)"
+_PROJECT_FILTER = "(project.id = @project_id OR project.id IS NULL)"
+
+
 def _query_yesterday_costs(client: bigquery.Client):
     start, end = _yesterday_bounds()
     table_fqn = f"`{PROJECT_ID}.{BILLING_DATASET}.{BILLING_TABLE}`"
     sql = f"""
     SELECT
       service.description AS service,
-      SUM(cost) AS cost,
-      currency AS currency
+      SUM({_NET_COST_EXPR}) AS cost,
+      ANY_VALUE(currency) AS currency
     FROM {table_fqn}
     WHERE usage_start_time >= @start
       AND usage_start_time <  @end
-    GROUP BY service, currency
-    HAVING cost > 0
+      AND {_PROJECT_FILTER}
+    GROUP BY service
+    HAVING cost != 0
     ORDER BY cost DESC
     """
     job = client.query(
@@ -76,6 +85,7 @@ def _query_yesterday_costs(client: bigquery.Client):
             query_parameters=[
                 bigquery.ScalarQueryParameter("start", "TIMESTAMP", start),
                 bigquery.ScalarQueryParameter("end", "TIMESTAMP", end),
+                bigquery.ScalarQueryParameter("project_id", "STRING", PROJECT_ID),
             ]
         ),
     )
@@ -88,11 +98,12 @@ def _query_month_to_date_total(client: bigquery.Client):
     table_fqn = f"`{PROJECT_ID}.{BILLING_DATASET}.{BILLING_TABLE}`"
     sql = f"""
     SELECT
-      SUM(cost) AS cost,
+      SUM({_NET_COST_EXPR}) AS cost,
       ANY_VALUE(currency) AS currency
     FROM {table_fqn}
     WHERE usage_start_time >= @start
       AND usage_start_time <  @end
+      AND {_PROJECT_FILTER}
     """
     job = client.query(
         sql,
@@ -100,6 +111,7 @@ def _query_month_to_date_total(client: bigquery.Client):
             query_parameters=[
                 bigquery.ScalarQueryParameter("start", "TIMESTAMP", start),
                 bigquery.ScalarQueryParameter("end", "TIMESTAMP", end),
+                bigquery.ScalarQueryParameter("project_id", "STRING", PROJECT_ID),
             ]
         ),
     )
