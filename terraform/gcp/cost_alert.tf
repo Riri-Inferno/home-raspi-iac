@@ -43,6 +43,8 @@ resource "google_pubsub_topic_iam_member" "billing_budget_publisher" {
   topic  = google_pubsub_topic.cost_alert.name
   role   = "roles/pubsub.publisher"
   member = "serviceAccount:billing-budgets@system.gserviceaccount.com"
+
+  depends_on = [google_project_iam_member.terraform_state_pubsub_admin]
 }
 
 # --- Cloud Billing Budgets ---------------------------------------------------
@@ -69,6 +71,8 @@ resource "google_billing_budget" "free_tier_exceeded" {
     pubsub_topic   = google_pubsub_topic.cost_alert.id
     schema_version = "1.0"
   }
+
+  depends_on = [google_billing_account_iam_member.terraform_state_billing_admin]
 }
 
 # Budget 2: monthly spend cap — info/warn/crit at 50/80/100%.
@@ -100,6 +104,8 @@ resource "google_billing_budget" "monthly_spend_cap" {
     pubsub_topic   = google_pubsub_topic.cost_alert.id
     schema_version = "1.0"
   }
+
+  depends_on = [google_billing_account_iam_member.terraform_state_billing_admin]
 }
 
 # --- Source zip + Cloud Function ----------------------------------------------

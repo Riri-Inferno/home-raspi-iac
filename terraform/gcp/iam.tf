@@ -102,3 +102,30 @@ resource "google_project_iam_member" "terraform_state_run_admin" {
   role    = "roles/run.admin"
   member  = "serviceAccount:${google_service_account.terraform_state.email}"
 }
+
+# Pub/Sub topic の setIamPolicy / getIamPolicy 用。roles/editor では topic-level
+# IAM 操作が許可されないため secretmanager/run と同じ流儀で追加。
+resource "google_project_iam_member" "terraform_state_pubsub_admin" {
+  project = var.project_id
+  role    = "roles/pubsub.admin"
+  member  = "serviceAccount:${google_service_account.terraform_state.email}"
+}
+
+# Billing account レベルの IAM。Cloud Billing Budget の作成と、billing account
+# 自体の IAM 管理（このリソース自身を含む）に必要。
+#
+# Bootstrap: terraform-state SA に対する billing.admin の最初の付与は、別の
+# 認証（billing.admin を持つユーザー）で gcloud から一度だけ手動実行する:
+#
+#   gcloud billing accounts add-iam-policy-binding 01DBEF-9C9A35-EBFD81 \
+#     --member="serviceAccount:terraform-state@portfolio-472717.iam.gserviceaccount.com" \
+#     --role="roles/billing.admin"
+#
+# その後この宣言で IaC 化することで state = reality を取り戻す
+# （google_billing_account_iam_member は idempotent。既存 binding を declare
+# しても reality は変わらず state だけ追従）。これ以降の billing IAM は IaC で管理。
+resource "google_billing_account_iam_member" "terraform_state_billing_admin" {
+  billing_account_id = var.billing_account_id
+  role               = "roles/billing.admin"
+  member             = "serviceAccount:${google_service_account.terraform_state.email}"
+}
