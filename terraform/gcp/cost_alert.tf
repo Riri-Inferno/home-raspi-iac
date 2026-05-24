@@ -29,6 +29,30 @@ resource "google_secret_manager_secret_iam_member" "cost_alert_secret_accessor" 
   depends_on = [google_project_iam_member.terraform_state_secretmanager_admin]
 }
 
+# --- Dedup state bucket ------------------------------------------------------
+# Cloud Billing Budget は threshold を越えている間、定期評価のたびに同じ payload を
+# 投げ続ける（= 同じ閾値で何度も Pub/Sub 発火）。重複通知を抑止するため、最後に
+# 通知した (budgetDisplayName, costIntervalStart, alertThresholdExceeded) を
+# state.json として保存し、関数側で比較してスキップ判定する。
+# 課金期間が変われば costIntervalStart の変化でリセットされるので lifecycle 不要。
+resource "google_storage_bucket" "cost_alert_state" {
+  name     = "riri-inferno-cost-alert-state"
+  location = "asia-northeast1"
+
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+
+  versioning {
+    enabled = false
+  }
+}
+
+resource "google_storage_bucket_iam_member" "cost_alert_state_object_admin" {
+  bucket = google_storage_bucket.cost_alert_state.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.cost_alert.email}"
+}
+
 # --- Pub/Sub topic (Budget notifications fan-in) -----------------------------
 resource "google_pubsub_topic" "cost_alert" {
   name = "cost-alert"
@@ -142,6 +166,7 @@ resource "google_cloudfunctions2_function" "cost_alert" {
       DISCORD_WEBHOOK_SECRET = "${google_secret_manager_secret.discord_webhook_cost_monitor.id}/versions/latest"
       REPORT_TIMEZONE        = var.cost_monitor_timezone
       CRITICAL_BUDGET_JPY    = tostring(var.cost_alert_critical_budget_jpy)
+      STATE_BUCKET           = google_storage_bucket.cost_alert_state.name
     }
   }
 
