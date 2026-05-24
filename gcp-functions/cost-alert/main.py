@@ -18,9 +18,15 @@ Env vars (set by Terraform):
     DISCORD_WEBHOOK_SECRET  Full Secret Manager resource name for webhook URL
     CRITICAL_BUDGET_JPY     Critical budget amount in JPY (used in message text)
     REPORT_TIMEZONE         IANA tz (e.g. Asia/Tokyo)
+    STATE_BUCKET            GCS bucket holding state.json for dedup
+
+Dedup: Cloud Billing Budget は threshold を越えている間、評価のたびに同じ payload
+を投げ続けるので、(budgetDisplayName, costIntervalStart, alertThresholdExceeded)
+を GCS の state.json に保存して、同じ期間・同じ（以下の）閾値での再送はスキップする。
 
 Dry-run: include `"_test": true` in the payload (use dry_run.sh). This skips
-the @everyone mention and prefixes the embed title with "[TEST]".
+the @everyone mention and prefixes the embed title with "[TEST]". State is not
+updated for dry-runs.
 """
 
 import base64
@@ -32,7 +38,8 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import functions_framework
-from google.cloud import secretmanager
+from google.cloud import secretmanager, storage
+from google.cloud.exceptions import NotFound
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -41,6 +48,8 @@ PROJECT_ID = os.environ["PROJECT_ID"]
 WEBHOOK_SECRET = os.environ["DISCORD_WEBHOOK_SECRET"]
 TZ = ZoneInfo(os.environ.get("REPORT_TIMEZONE", "Asia/Tokyo"))
 CRITICAL_BUDGET_JPY = float(os.environ.get("CRITICAL_BUDGET_JPY", "1000"))
+STATE_BUCKET = os.environ["STATE_BUCKET"]
+STATE_OBJECT = "state.json"
 
 COLOR_INFO = 0x3498DB
 COLOR_WARN = 0xF1C40F
@@ -51,6 +60,29 @@ def _fetch_webhook_url() -> str:
     client = secretmanager.SecretManagerServiceClient()
     resp = client.access_secret_version(name=WEBHOOK_SECRET)
     return resp.payload.data.decode("utf-8").strip()
+
+
+def _load_state() -> dict:
+    client = storage.Client()
+    blob = client.bucket(STATE_BUCKET).blob(STATE_OBJECT)
+    try:
+        data = blob.download_as_bytes()
+    except NotFound:
+        return {}
+    try:
+        return json.loads(data)
+    except json.JSONDecodeError:
+        log.exception("state.json is corrupt, resetting")
+        return {}
+
+
+def _save_state(state: dict) -> None:
+    client = storage.Client()
+    blob = client.bucket(STATE_BUCKET).blob(STATE_OBJECT)
+    blob.upload_from_string(
+        json.dumps(state, ensure_ascii=False),
+        content_type="application/json",
+    )
 
 
 def _format_yen(amount: float) -> str:
@@ -179,11 +211,39 @@ def main(cloud_event) -> None:
         return
 
     level, title, message, mention = classified
+    is_test = bool(payload.get("_test"))
 
-    if payload.get("_test"):
+    budget_name = payload.get("budgetDisplayName", "")
+    interval = payload.get("costIntervalStart", "")
+    threshold = payload.get("alertThresholdExceeded", 0) or 0
+
+    # Dedup: skip if we've already notified for this budget at the same (or
+    # higher) threshold within the same billing interval. Bypass for dry-runs.
+    state = _load_state() if not is_test else {}
+    last = state.get(budget_name, {})
+    if (
+        not is_test
+        and last.get("interval") == interval
+        and last.get("threshold", 0) >= threshold
+    ):
+        log.info(
+            "dedup: already notified budget=%s interval=%s threshold=%s",
+            budget_name, interval, threshold,
+        )
+        return
+
+    if is_test:
         title = f"[TEST] {title}"
         mention = False
 
     embed = _build_embed(level, title, message, payload)
     webhook_url = _fetch_webhook_url()
     _post_discord(webhook_url, embed, mention)
+
+    if not is_test:
+        state[budget_name] = {
+            "interval": interval,
+            "threshold": threshold,
+            "notified_at": datetime.now(TZ).isoformat(),
+        }
+        _save_state(state)
