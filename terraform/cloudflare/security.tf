@@ -10,6 +10,7 @@
 resource "cloudflare_bot_management" "riri_inferno" {
   zone_id    = var.zone_id
   fight_mode = true
+  enable_js  = true
 }
 
 # ---------------------------------------------------------------------------
