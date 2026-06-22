@@ -32,7 +32,7 @@ resource "cloudflare_ruleset" "rate_limit" {
       action      = "block"
       enabled     = true
       ratelimit = {
-        characteristics     = ["ip.src"]
+        characteristics     = ["ip.src", "cf.colo.id"]
         period              = 60
         requests_per_period = 30
         mitigation_timeout  = 60
@@ -56,7 +56,7 @@ resource "cloudflare_ruleset" "custom_rules" {
   rules = [
     {
       description = "空 UA と既知攻撃ツールをブロック"
-      expression  = "(http.user_agent eq \"\") or (http.user_agent matches \"(?i)(sqlmap|nikto|masscan|nmap|dirbuster|gobuster|nuclei)\")"
+      expression  = "(http.user_agent eq \"\") or (http.user_agent contains \"sqlmap\") or (http.user_agent contains \"nikto\") or (http.user_agent contains \"masscan\") or (http.user_agent contains \"nmap\") or (http.user_agent contains \"dirbuster\") or (http.user_agent contains \"gobuster\") or (http.user_agent contains \"nuclei\")"
       action      = "block"
       enabled     = true
     }
