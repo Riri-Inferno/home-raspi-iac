@@ -50,12 +50,18 @@ resource "cloudflare_dns_record" "oidc" {
   }
 }
 
-# Vector Search API (gcp-serverless-vector-search repo)
-# GCP API Gateway の hostname を指す。Cloudflare Tunnel ではなく外部公開エンドポイントへの CNAME。
-# Cloudflare SSL は "Full" 以上が必要 (gateway.dev は TLS 終端済みのため "Full Strict" でも可)。
-resource "cloudflare_dns_record" "vector_search_api" {
+# #48 initially added this as vector_search_api for vector-search.api.riri-inferno.com.
+# Keep state continuity while moving to a Universal SSL-friendly first-level hostname.
+moved {
+  from = cloudflare_dns_record.vector_search_api
+  to   = cloudflare_dns_record.vector_search
+}
+
+# Vector Search API (gcp-serverless-vector-search repo).
+# CNAME to GCP API Gateway, not to the home k3s Cloudflare Tunnel.
+resource "cloudflare_dns_record" "vector_search" {
   content = "vector-search-gateway-dzqjqk3y.an.gateway.dev"
-  name    = "vector-search.api.riri-inferno.com"
+  name    = "vector-search.riri-inferno.com"
   proxied = true
   tags    = []
   ttl     = 1
