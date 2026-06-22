@@ -33,9 +33,10 @@ resource "cloudflare_ruleset" "rate_limit" {
       enabled     = true
       ratelimit = {
         characteristics     = ["ip.src", "cf.colo.id"]
+        # Free プランは period / mitigation_timeout ともに 10 秒固定。
         period              = 10
         requests_per_period = 5
-        mitigation_timeout  = 60
+        mitigation_timeout  = 10
       }
     }
   ]
