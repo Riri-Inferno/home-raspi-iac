@@ -7,8 +7,8 @@
 #   認可後は本リソースで管理できる。
 #
 # デプロイフロー:
-#   develop ブランチへの push → 本番デプロイ (app.riri-inferno.com)
-#   feature/* ブランチへの push → プレビューデプロイ (*.riri-vector-search.pages.dev)
+#   develop ブランチへの push → 本番デプロイ (vector-search-demo.riri-inferno.com)
+#   プレビューデプロイは無効
 
 resource "cloudflare_pages_project" "vector_search_frontend" {
   account_id        = var.account_id
@@ -24,8 +24,7 @@ resource "cloudflare_pages_project" "vector_search_frontend" {
       pr_comments_enabled           = true
       deployments_enabled           = true
       production_deployment_enabled = true
-      preview_deployment_setting    = "custom"
-      preview_branch_includes       = ["feature/*"]
+      preview_deployment_setting    = "none"
     }
   }
 
@@ -39,7 +38,7 @@ resource "cloudflare_pages_project" "vector_search_frontend" {
 resource "cloudflare_pages_domain" "vector_search_frontend" {
   account_id   = var.account_id
   project_name = cloudflare_pages_project.vector_search_frontend.name
-  name         = "app.${var.zone_name}"
+  name         = "vector-search-demo.${var.zone_name}"
 
   depends_on = [cloudflare_pages_project.vector_search_frontend]
 }
@@ -47,7 +46,7 @@ resource "cloudflare_pages_domain" "vector_search_frontend" {
 # DNS: app.riri-inferno.com → riri-vector-search.pages.dev
 resource "cloudflare_dns_record" "vector_search_app" {
   zone_id = var.zone_id
-  name    = "app.${var.zone_name}"
+  name    = "vector-search-demo.${var.zone_name}"
   type    = "CNAME"
   content = "${cloudflare_pages_project.vector_search_frontend.name}.pages.dev"
   proxied = true
