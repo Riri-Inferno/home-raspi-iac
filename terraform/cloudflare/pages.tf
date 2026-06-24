@@ -22,8 +22,7 @@ resource "cloudflare_pages_project" "vector_search_frontend" {
       repo_name                     = "gcp-serverless-vector-search"
       production_branch             = "develop"
       pr_comments_enabled           = true
-      deployments_enabled           = true
-      production_deployment_enabled = true
+      production_deployments_enabled = true
       preview_deployment_setting    = "none"
     }
   }
