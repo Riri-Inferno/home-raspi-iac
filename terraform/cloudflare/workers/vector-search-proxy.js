@@ -15,7 +15,7 @@ const ORIGIN = "vector-search-gateway-dzqjqk3y.an.gateway.dev";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, PATCH, DELETE",
   "Access-Control-Allow-Headers": "Content-Type, X-API-Key",
   "Access-Control-Max-Age": "86400",
 };
