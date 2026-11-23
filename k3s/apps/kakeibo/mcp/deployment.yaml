@@ -26,6 +26,9 @@ spec:
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
+        # イメージの USER は名前（node）なので、kubelet が root でないことを確かめられるように UID で指定する
+        runAsUser: 1000
+        runAsGroup: 1000
       containers:
         - name: mcp
           image: ghcr.io/riri-inferno/selene-mcp-server:latest
