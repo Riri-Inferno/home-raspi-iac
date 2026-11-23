@@ -1,0 +1,14 @@
+---
+# cloudflared から DNS で参照される（mcp-kakeibo.riri-inferno.com）。外部公開は Cloudflare Tunnel 経由のみ。
+apiVersion: v1
+kind: Service
+metadata:
+  name: kakeibo-mcp
+  namespace: kakeibo
+spec:
+  type: ClusterIP
+  selector:
+    app: kakeibo-mcp
+  ports:
+    - port: 3000
+      targetPort: 3000

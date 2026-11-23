@@ -13,6 +13,9 @@ data:
         service: http://kakeibo-frontend.kakeibo.svc.cluster.local:80
       - hostname: api-kakeibo.riri-inferno.com
         service: http://kakeibo-backend.kakeibo.svc.cluster.local:8080
+      # MCP（Streamable HTTP）。認証は Authorization ヘッダーの API キーを backend が検証する
+      - hostname: mcp-kakeibo.riri-inferno.com
+        service: http://kakeibo-mcp.kakeibo.svc.cluster.local:3000
       # GCP WIF が SA token 検証のために fetch する OIDC discovery / JWKS。
       # Cloudflare Access では保護しないこと（GCP からの匿名 GET を通す必要がある）。
       - hostname: oidc.riri-inferno.com

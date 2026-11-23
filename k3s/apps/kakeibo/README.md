@@ -14,14 +14,16 @@
 | `postgres/` | DB Pod（postgres:16）+ PVC + Service |
 | `backend/` | API Pod（GHCR から pull）+ Service |
 | `frontend/` | UI Pod（GHCR から pull、build-time に API URL 焼き込み済）+ Service |
+| `mcp/` | MCP サーバー Pod（[selene-mcp-server](https://github.com/Riri-Inferno/selene-mcp-server)、Streamable HTTP）+ Service。秘密情報は持たず、API キーを backend に転送するだけ |
 
 ## 外部依存
 
 | 依存先 | 内容 |
 |---|---|
 | GHCR (`ghcr.io/riri-inferno/serverlesskakeibo/{backend,frontend}`) | image の pull 元（public、arm64） |
+| GHCR (`ghcr.io/riri-inferno/selene-mcp-server`) | MCP サーバーの image の pull 元（public、arm64） |
 | `k3s/apps/oidc/` | WIF 用 OIDC discovery（`oidc.riri-inferno.com`）。GCP STS が SA token 検証に使う |
-| `k3s/apps/cloudflared/configmap.yaml` | `kakeibo.riri-inferno.com` / `api-kakeibo.riri-inferno.com` の routing |
+| `k3s/apps/cloudflared/configmap.yaml` | `kakeibo.riri-inferno.com` / `api-kakeibo.riri-inferno.com` / `mcp-kakeibo.riri-inferno.com` の routing |
 | GCP Workload Identity Pool `kakeibo-pool` / Provider `kakeibo-k3s` | backend が GCP API を叩くときの認証経路 |
 
 ## アプリ側との分担
