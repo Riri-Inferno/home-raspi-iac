@@ -1,0 +1,70 @@
+---
+# selene-mcp-server（Streamable HTTP）。SELENE を AI（MCP クライアント）から操作するための入口。
+# 認証は持たず、リクエストの Authorization: Bearer slk_... を backend にそのまま転送する。
+# 秘密情報を持たないので Secret / ServiceAccount のマウントは不要。
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kakeibo-mcp
+  namespace: kakeibo
+  annotations:
+    # Keel: registry の :latest digest 変化を 5 分間隔で polling 検知 → rollout 駆動（backend と同じ）。
+    keel.sh/policy: force
+    keel.sh/match-tag: "true"
+    keel.sh/trigger: poll
+    keel.sh/pollSchedule: "@every 5m"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kakeibo-mcp
+  template:
+    metadata:
+      labels:
+        app: kakeibo-mcp
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: mcp
+          image: ghcr.io/riri-inferno/selene-mcp-server:latest
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: MCP_TRANSPORT
+              value: http
+            - name: PORT
+              value: "3000"
+            # backend にはクラスタ内で直接つなぐ（Cloudflare を経由しない）
+            - name: SELENE_API_BASE_URL
+              value: http://kakeibo-backend.kakeibo.svc.cluster.local:8080
+            # DNS rebinding 対策。cloudflared は公開ホスト名を Host ヘッダーのまま転送する
+            - name: MCP_ALLOWED_HOSTS
+              value: mcp-kakeibo.riri-inferno.com
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 5
