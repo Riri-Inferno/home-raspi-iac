@@ -11,6 +11,11 @@ data:
     ingress:
       - hostname: kakeibo.riri-inferno.com
         service: http://kakeibo-frontend.kakeibo.svc.cluster.local:80
+      # backend の /internal/ 以下（MCP サーバー向けのトークン交換など）はクラスタ内からだけ使うので、外部には出さない。
+      # ingress は上から順に判定されるため、api-kakeibo の一般のルールより前に置く
+      - hostname: api-kakeibo.riri-inferno.com
+        path: ^/internal/
+        service: http_status:404
       - hostname: api-kakeibo.riri-inferno.com
         service: http://kakeibo-backend.kakeibo.svc.cluster.local:8080
       # MCP（Streamable HTTP）。認証は Authorization ヘッダーの API キーを backend が検証する

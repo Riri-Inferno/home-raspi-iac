@@ -46,6 +46,12 @@ spec:
             # DNS rebinding 対策。cloudflared は公開ホスト名を Host ヘッダーのまま転送する
             - name: MCP_ALLOWED_HOSTS
               value: mcp-kakeibo.riri-inferno.com
+            # OAuth のリソースサーバー（selene-mcp-server v0.7.0 以降）。
+            # MCP_RESOURCE_URL は backend の OAuth__McpResource と文字列として完全に一致させる
+            - name: MCP_RESOURCE_URL
+              value: https://mcp-kakeibo.riri-inferno.com/mcp
+            - name: MCP_AUTHORIZATION_SERVER
+              value: https://api-kakeibo.riri-inferno.com/
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

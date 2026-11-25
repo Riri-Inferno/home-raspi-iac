@@ -45,5 +45,12 @@ data:
   # CORS
   AllowedOrigins__0: "https://kakeibo.riri-inferno.com"
 
+  # OAuth 認可サーバー（Claude などの MCP クライアント向け）。ServerlessKakeibo の
+  # Document/Architecture/oauth-authorization-server.md 参照。鍵（OAuth__SigningKey / OAuth__EncryptionKey）は sealedsecret.yaml
+  # McpResource は MCP サーバーの MCP_RESOURCE_URL と文字列として完全に一致させる
+  OAuth__Issuer: "https://api-kakeibo.riri-inferno.com/"
+  OAuth__McpResource: "https://mcp-kakeibo.riri-inferno.com/mcp"
+  OAuth__ConsentPageUrl: "https://kakeibo.riri-inferno.com/oauth/consent"
+
   # Tenancy
   DefaultTenantId: "deadeade-0001-0000-0000-000000000001"
